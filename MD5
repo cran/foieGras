@@ -1,6 +1,6 @@
-6041e693daf2e44d1d21fe839a9de0e1 *DESCRIPTION
+8110a81969b5b845a0f49c1f7dfbe304 *DESCRIPTION
 496cc6b77acedc44f97b1fe40a993858 *NAMESPACE
-0c7443aea4ffa7bae5c38b15c93d7321 *NEWS.md
+efe579603fd450246e028ea3dcdef3f0 *NEWS.md
 1e5030549cdb1fa6bc2ad3dc5a6fed46 *R/fit_ssm.R
 6b7366386d802a5e8fcfdf8d31ade53f *R/foieGras-deprecated.R
 5cd0ad2e3db9267f3a30198d88f82dd1 *R/foieGras-package.R
@@ -11,14 +11,14 @@ efbac6c0ba407fd362503fd8ef84c0c2 *R/print.foieGras.R
 90994c8d8d034d0cc4e5bf0479fa82f6 *R/roxygentags.R
 fbbf2cd7f05ab7cbd24a8c47b030fd32 *R/sfilter.R
 fd81af3cc95df931d607439dc6969534 *R/util.R
-49116c74c9591a9b9af26828c0f87cae *README.md
-9a57d1d06613ec562e85a2d4fa72c1e5 *build/vignette.rds
+d240ab5565e6c37620174302e8c7a42d *README.md
+28d1cd443585d924f5a111a26f42c359 *build/vignette.rds
 7234e10ae60a3061f17a7b909ec60ba8 *data/ellie.RData
 348e08b87cef2f488ae8d0fd9ebc56e7 *data/fit.RData
 38a7c2385738dc2ca001498bb194644d *data/rope.RData
 b1758a0e1be5fc3bcc49d929ac49ddc3 *inst/doc/foiegras-basics.R
 e829b82e1133942c7ea8e38741b8edae *inst/doc/foiegras-basics.Rmd
-19e4ad23a234fc056d4b4ea64685ce95 *inst/doc/foiegras-basics.html
+78d8c7c90f12cc1960580de79e066f12 *inst/doc/foiegras-basics.html
 6c9836ef0c8ead0b278f964f682d8eec *man/dummy.Rd
 d155430ca612c0aee624bcd7864fbdbd *man/ellie.Rd
 52d5f083f316b026d6848fd732cb0ff6 *man/fit.Rd
@@ -32,7 +32,7 @@ c6e62b68d18d69ecad1eba8d3841c9eb *man/print.foieGras.Rd
 7ecd38676be5177ee61e82c93800f869 *man/rope.Rd
 872963c60f1089af64c859fd88267490 *man/sfilter.Rd
 2e182ea7dbac60eda4d8668f470e401b *man/wrap_lon.Rd
-9defa5926eb3bb9a7985142e2d79a72d *src/foieGras.cpp
+be2f8b38d529cf9dbc7fbcbf2741e7f5 *src/foieGras.cpp
 aa95f36c4adeb37498a15df81929b8a3 *tests/testthat.R
 45f88e0d94654d627fd2f839c26914e4 *tests/testthat/test-fit_ssm.R
 1e08d80811e6817afa6c2f65d70be308 *tests/testthat/test-grab.R
