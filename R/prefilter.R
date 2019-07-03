@@ -180,14 +180,14 @@ prefilter <-
       prj <- "+init=epsg:3395 +units=km"
     }
 
-    sf_locs <- sf_locs %>% st_transform(., prj)
+    sf_locs <- sf_locs %>% st_transform(., crs = prj)
 
     if (max(dd$lat) <= -60) {
       prj <- paste0("+init=epsg:3031 +units=km +lon_0=", mlon)
-      sf_locs <- sf_locs %>% st_transform(., prj)
+      sf_locs <- sf_locs %>% st_transform(., crs = prj)
     } else if (min(dd$lat) >= 60) {
       prj <- paste0("+init=epsg:3995 +units=km +lon_0=", mlon)
-      sf_locs <- sf_locs %>% st_transform(., prj)
+      sf_locs <- sf_locs %>% st_transform(., crs = prj)
     }
 
 
