@@ -2,18 +2,18 @@
 % Please edit documentation in R/grab.R
 \name{grab}
 \alias{grab}
-\title{grab tbl's by name from a foieGras fitted model object}
+\title{grab tbl's by name from a foieGras model object}
 \usage{
 grab(x, what = "fitted", as_sf = TRUE)
 }
 \arguments{
-\item{x}{a foieGras fitted model object}
+\item{x}{a \code{foieGras} ssm or mpm model object}
 
-\item{what}{the tibble to be grabbed; either `fitted`, `predicted`, or
+\item{what}{the tibble to be grabbed; either `fitted`, `predicted` (ssm only), or
 `data` (single letters can be used)}
 
 \item{as_sf}{logical; if FALSE then return a tibble with unprojected lonlat
-coordinates, otherwise return an sf tibble}
+coordinates, otherwise return an sf tibble. Ignored if x is an mpm model object.}
 }
 \value{
 a tbl with all individual tbl's appended
@@ -25,7 +25,8 @@ The specified tbl's are appended to a single output tbl.
 }
 \examples{
 ## load example foieGras fit object (to save time)
-data(fit)
+data(fssm)
 ## grab predicted values as an unprojected tibble
-preds <- grab(fit, what = "p", as_sf = FALSE)
+preds <- grab(fssm, what = "predicted", as_sf = FALSE)
+
 }

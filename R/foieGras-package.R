@@ -22,7 +22,7 @@
 ##' @importFrom argosfilter sdafilter
 ##' @importFrom TMB MakeADFun sdreport newtonOption
 ##' @importFrom stats approx cov sd predict nlminb optim na.omit
-##' @importFrom ggplot2 ggplot geom_point geom_path aes ggtitle theme_bw
+##' @importFrom ggplot2 ggplot geom_point geom_path geom_ribbon geom_qq geom_qq_line geom_histogram aes ggtitle theme_bw
 ##' @importFrom ggplot2 theme element_blank geom_sf xlim ylim unit
 ##' @importFrom ggplot2 element_text scale_colour_viridis_c
 ##' @importFrom gridExtra grid.arrange
@@ -31,7 +31,7 @@ NULL
 
 ##' @name ellie
 ##' @docType data
-##' @title Elephant seal Argos satellite data (1 individual)
+##' @title Southern elephant seal Argos satellite data (1 individual)
 ##' @format .RData
 ##' @keywords data
 ##' @description Example elephant seal Argos tracking data. Data were sourced from
@@ -40,25 +40,40 @@ NULL
 ##' Strategy and the Super Science Initiative.
 NULL
 
-##' @name rope
+##' @name ellies
 ##' @docType data
-##' @title Royal penguin Argos satellite data (13 individuals)
+##' @title Southern elephant seal Argos satellite data (2 individuals)
 ##' @format .RData
 ##' @keywords data
-##' @description Example penguin Argos tracking data.
+##' @description Example elephant seal Argos tracking data. Data were sourced from
+##' the Integrated Marine Observing System (IMOS) - IMOS is supported by the
+##' Australian Government through the National Collaborative Research Infrastructure
+##' Strategy and the Super Science Initiative.
 NULL
 
-##' @name fit
+##' @name fssm
 ##' @docType data
 ##' @title foieGras example fit object
 ##' @format .RData
 ##' @keywords data
-##' @description Example foieGras fit object, using ellie example data and the
-##' following call: fit <- fit_ssm(ellie, model="rw", time.step=24). This example
+##' @description Example foieGras fit object, using ellies example data and the
+##' following call: fssm <- fit_ssm(ellies, vmax=4, model="crw", time.step=36). This example
 ##' fit is included purely to speed up examples where a fit object is required
 ##' but fitting to data is not the focus of the example.
-##'
+NULL
 
+##' @name fmpm
+##' @docType data
+##' @title foieGras example mpm fit object
+##' @format .RData
+##' @keywords data
+##' @description Example foieGras fit object, using ssm_fits example data and the
+##' following call: fmp <- fssm %>% grab(., "p", as_sf = FALSE) %>% 
+##' select(id,date,lon,lat) %>% 
+##' fit_mpm(., model="jmpm") 
+##' This example fit is included purely to speed up examples where a fit object is required
+##' but fitting to data is not the focus of the example.
+NULL
 
 ## quiets concerns of R CMD check re: the .'s that appear in pipelines
 if(getRversion() >= "2.15.1")  utils::globalVariables(c("."))
@@ -66,6 +81,7 @@ if(getRversion() >= "2.15.1")  utils::globalVariables(c("."))
 ## stop R CMD check generating NOTES about global variables
 id <- ssm <- converged <- keep <- id <- y <- x.se <- y.se <- "shut.up"
 geometry <- u <- v <- u.se <- v.se <- lc <- smaj <- smin <- eor <- "shut.up"
-obs.type <- amf_x <- amf_y <- lon <- lat <- rename <- X <- Y <- "shut.up"
-isd <- digits <- "shut.up"
-
+obs.type <- emf.x <- emf.y <- lon <- lat <- rename <- X <- Y <- "shut.up"
+y.z <- x.z <- z <- out <- r <- sub <- isd <- digits <- "shut.up"
+lonerr <- laterr <- coord <- value <- resid <- "shut.up"
+se <- g <- g.se <- id1 <- mpm <- residual <- "shut.up"

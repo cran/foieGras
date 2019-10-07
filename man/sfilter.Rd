@@ -5,8 +5,9 @@
 \title{fit the state-space model to \code{prefilter}-ed data}
 \usage{
 sfilter(x, model = c("rw", "crw"), time.step = 6, parameters = NULL,
-  fit.to.subset = TRUE, optim = c("nlminb", "optim"),
-  verbose = FALSE, inner.control = NULL)
+  map = NULL, fit.to.subset = TRUE, optim = c("nlminb", "optim"),
+  verbose = FALSE, control = NULL, inner.control = NULL,
+  lpsi = -10)
 }
 \arguments{
 \item{x}{Argos data passed through prefilter()}
@@ -18,8 +19,10 @@ Alternatively, a vector of prediction times, possibly not regular, must be
 specified as a data.frame with id and POSIXt dates.}
 
 \item{parameters}{a list of initial values for all model parameters and
-unobserved states, default is to let sfilter specifiy these. Only play with
+unobserved states, default is to let sfilter specify these. Only play with
 this if you know what you are doing...}
+
+\item{map}{a named list of parameters as factors that are to be fixed during estimation, e.g., list(psi = factor(NA))}
 
 \item{fit.to.subset}{fit the SSM to the data subset determined by prefilter
 (default is TRUE)}
@@ -28,8 +31,12 @@ this if you know what you are doing...}
 
 \item{verbose}{report progress during minimization}
 
+\item{control}{list of control parameters for the outer optimization (type ?nlminb or ?optim for details)}
+
 \item{inner.control}{list of control settings for the inner optimization
 (see ?TMB::MakeADFUN for additional details)}
+
+\item{lpsi}{lower bound for the psi parameter}
 }
 \description{
 generates initial values for model parameters and unobserved states;
@@ -44,7 +51,7 @@ individual track, use \code{fit_ssm} to fit to multiple tracks (see ?fit_ssm).
 }
 \examples{
 data(ellie)
-pf <- prefilter(ellie, vmax=10, ang=c(15,25), min.dt=120)
+pf <- prefilter(ellie, vmax=4, ang=c(15,25), min.dt=120)
 out <- sfilter(pf, model="rw", time.step=24)
 
 }

@@ -1,8 +1,9 @@
 ##' @title Fit a continuous-time state-space model to filter Argos satellite geolocation data
 ##'
 ##' @description fits either a simple random walk or a correlated random walk
-##' (a random walk on velocity) in continuous time to filter Argos KF and/or LS data
-##' and predict locations at user-specified time intervals (regular or irregular)
+##' (a random walk on velocity) in continuous time to filter Argos KF and/or LS data, or 
+##' processed light-level geolocation data. predicts locations at user-specified 
+##' time intervals (regular or irregular).
 ##'
 ##' @param d a data frame of observations including Argos KF error ellipse info
 ##' @param vmax max travel rate (m/s) passed to argosfilter::sdafilter to define
@@ -14,27 +15,31 @@
 ##' @param spdf (logical) turn argosfilter::sdafilter on (default; TRUE) or off
 ##' @param min.dt minimum allowable time difference between observations;
 ##' dt <= min.dt will be ignored by the SSM
-##' @param pf just pre-filter the data, do not fit the ctrw (default is FALSE)
+##' @param pf just pre-filter the data, do not fit the SSM (default is FALSE)
 ##' @param model fit either a simple random walk ("rw") or correlated random walk
 ##' ("crw") as a continuous-time process model
 ##' @param time.step the regular time interval, in hours, to predict to.
 ##' Alternatively, a vector of prediction times, possibly not regular, must be
 ##' specified as a data.frame with id and POSIXt dates.
+##' @param emf optionally supplied data.frame of error multiplication factors for Argos location quality classes. Default behaviour is to use the factors supplied in foieGras::emf()
+##' @param map a named list of parameters as factors that are to be fixed during estimation, e.g., list(psi = factor(NA))
 ##' @param parameters a list of initial values for all model parameters and
-##' unobserved states, default is to let sfilter specifiy these. Only play with
+##' unobserved states, default is to let sfilter specify these. Only play with
 ##' this if you know what you are doing...
-##' @param fit.to.subset fit the SSM to the data subset determined by prefilter
+##' @param fit.to.subset fit the SSM to the data subset determined by \code{prefilter}
 ##' (default is TRUE)
 ##' @param optim numerical optimizer to be used ("nlminb" or "optim")
 ##' @param verbose report progress during minimization; 0 for complete silence; 1 for progress bar only; 2 for minimizer trace but not progress bar
-##' @param inner.control list of control settings for the inner optimization
-##' (see ?TMB::MakeADFUN for additional details)
+##' @param control list of control settings for the outer optimizer (see ?nlminb or ?optim for details)
+##' @param inner.control list of control settings for the inner optimizer (see ?TMB::MakeADFUN for additional details)
+##' @param lpsi lower bound for the psi parameter
+
 ##'
 ##' @return a list with components
 ##' \item{\code{call}}{the matched call}
 ##' \item{\code{predicted}}{an sf tbl of predicted location states}
 ##' \item{\code{fitted}}{an sf tbl of fitted locations}
-##' \item{\code{par}}{model parameter summmary}
+##' \item{\code{par}}{model parameter summary}
 ##' \item{\code{data}}{an augmented sf tbl of the input data}
 ##' \item{\code{inits}}{a list of initial values}
 ##' \item{\code{pm}}{the process model fit, either "rw" or "crw"}
@@ -46,23 +51,21 @@
 ##' \item{\code{time}}{the processing time for sfilter}
 ##'
 ##' @examples
-##' ## fit crw model to multiple individuals with Argos LS data
+##' ## fit rw model to one seal with Argos KF data
 ##' data(ellie)
 ##' fit <- fit_ssm(ellie, model = "rw", time.step = 24)
-##' plot(fit$ssm[[1]])
+##' 
+##' ## time series plots of predicted value fits
+##' plot(fit, what = "predicted", type = 1)
 ##'
-##' \donttest{
-##' data(rope)
-##' fls <- fit_ssm(rope, model = "crw", time.step = 12)
+##' ## fit crw model to both seals, with Argos KF & LS data 
+##' data(ellies)
+##' fits <- fit_ssm(ellies, model = "crw", time.step = 24)
 ##'
-##' ## simple diagnostic plot for individual 3,
-##' ## showing predicted value time-series
-##' plot(fls$ssm[[3]], what = "predicted")
-##'}
+##' ## track plots of fits for both seals
+##' plot(fits, what = "predicted", type = 2)
 ##'
-##' @importFrom dplyr group_by do rowwise ungroup select mutate slice
-##' @importFrom magrittr "%>%"
-##' @importFrom tibble as_tibble
+##' @importFrom dplyr group_by do rowwise ungroup select mutate slice "%>%"
 ##'
 ##' @export
 fit_ssm <- function(d,
@@ -72,25 +75,28 @@ fit_ssm <- function(d,
                     spdf = TRUE,
                     min.dt = 60,
                     pf = FALSE,
-                    model = "rw",
+                    model = "crw",
                     time.step = 6,
+                    emf = NULL,
+                    map = NULL,
                     parameters = NULL,
                     fit.to.subset = TRUE,
-                    optim = "nlminb",
+                    optim = "optim",
                     verbose = 1,
-                    inner.control = NULL
+                    control = NULL,
+                    inner.control = NULL,
+                    lpsi=-Inf
                     )
 {
 
-
   if(!is.numeric(vmax)) stop("\nvmax must be a numeric value in m/s")
   if(!is.numeric(ang)) stop("\nang must be a numeric value in degrees, or -1 to ignore")
-  if(!is.numeric(distlim)) stop("\ndistlim must be two numeric values in m")
+  if(!is.numeric(distlim) | length(distlim) != 2) stop("\ndistlim must be two numeric values in m")
   if(!is.numeric(min.dt)) stop("\nmin.dt must be a numeric value in s")
 
   if(verbose %in% c(0,2)) options(dplyr.show_progress = FALSE)
   if(verbose == 1)
-    cat("\nprefiltering data...\n")
+    cat("\npre-filtering data...\n")
   fit <- d %>%
     group_by(id) %>%
     do(pf = prefilter(
@@ -99,7 +105,8 @@ fit_ssm <- function(d,
       ang = ang,
       distlim = distlim,
       spdf = spdf,
-      min.dt = min.dt
+      min.dt = min.dt,
+      emf = emf
     ))
 
   if(pf){
@@ -120,10 +127,13 @@ fit_ssm <- function(d,
         model = model,
         time.step = time.step,
         parameters = parameters,
+        map = map,
         fit.to.subset = fit.to.subset,
         optim = optim,
         verbose = verb,
-        inner.control = inner.control
+        control = control,
+        inner.control = inner.control,
+        lpsi = lpsi
       ),
       silent = TRUE)
       )
@@ -133,12 +143,14 @@ fit_ssm <- function(d,
       mutate(id = sapply(.$ssm, function(x)
         x$data$id[1])) %>%
       mutate(converged = sapply(.$ssm, function(x)
-        if(length(x) == 13) {
+        if(length(x) == 15) {
         x$opt$convergence == 0
-          } else if(length(x) < 13) {
+          } else if(length(x) < 15) {
             FALSE
           })) %>%
       select(., id, ssm, converged)
   }
+
+  class(fit) <- append("fG_ssm", class(fit))
   return(fit)
 }

@@ -5,9 +5,10 @@
 \title{Fit a continuous-time state-space model to filter Argos satellite geolocation data}
 \usage{
 fit_ssm(d, vmax = 50, ang = -1, distlim = c(2500, 5000),
-  spdf = TRUE, min.dt = 60, pf = FALSE, model = "rw",
-  time.step = 6, parameters = NULL, fit.to.subset = TRUE,
-  optim = "nlminb", verbose = 1, inner.control = NULL)
+  spdf = TRUE, min.dt = 60, pf = FALSE, model = "crw",
+  time.step = 6, emf = NULL, map = NULL, parameters = NULL,
+  fit.to.subset = TRUE, optim = "optim", verbose = 1,
+  control = NULL, inner.control = NULL, lpsi = -Inf)
 }
 \arguments{
 \item{d}{a data frame of observations including Argos KF error ellipse info}
@@ -26,7 +27,7 @@ for details}
 \item{min.dt}{minimum allowable time difference between observations;
 dt <= min.dt will be ignored by the SSM}
 
-\item{pf}{just pre-filter the data, do not fit the ctrw (default is FALSE)}
+\item{pf}{just pre-filter the data, do not fit the SSM (default is FALSE)}
 
 \item{model}{fit either a simple random walk ("rw") or correlated random walk
 ("crw") as a continuous-time process model}
@@ -35,26 +36,33 @@ dt <= min.dt will be ignored by the SSM}
 Alternatively, a vector of prediction times, possibly not regular, must be
 specified as a data.frame with id and POSIXt dates.}
 
+\item{emf}{optionally supplied data.frame of error multiplication factors for Argos location quality classes. Default behaviour is to use the factors supplied in foieGras::emf()}
+
+\item{map}{a named list of parameters as factors that are to be fixed during estimation, e.g., list(psi = factor(NA))}
+
 \item{parameters}{a list of initial values for all model parameters and
-unobserved states, default is to let sfilter specifiy these. Only play with
+unobserved states, default is to let sfilter specify these. Only play with
 this if you know what you are doing...}
 
-\item{fit.to.subset}{fit the SSM to the data subset determined by prefilter
+\item{fit.to.subset}{fit the SSM to the data subset determined by \code{prefilter}
 (default is TRUE)}
 
 \item{optim}{numerical optimizer to be used ("nlminb" or "optim")}
 
 \item{verbose}{report progress during minimization; 0 for complete silence; 1 for progress bar only; 2 for minimizer trace but not progress bar}
 
-\item{inner.control}{list of control settings for the inner optimization
-(see ?TMB::MakeADFUN for additional details)}
+\item{control}{list of control settings for the outer optimizer (see ?nlminb or ?optim for details)}
+
+\item{inner.control}{list of control settings for the inner optimizer (see ?TMB::MakeADFUN for additional details)}
+
+\item{lpsi}{lower bound for the psi parameter}
 }
 \value{
 a list with components
 \item{\code{call}}{the matched call}
 \item{\code{predicted}}{an sf tbl of predicted location states}
 \item{\code{fitted}}{an sf tbl of fitted locations}
-\item{\code{par}}{model parameter summmary}
+\item{\code{par}}{model parameter summary}
 \item{\code{data}}{an augmented sf tbl of the input data}
 \item{\code{inits}}{a list of initial values}
 \item{\code{pm}}{the process model fit, either "rw" or "crw"}
@@ -67,22 +75,23 @@ a list with components
 }
 \description{
 fits either a simple random walk or a correlated random walk
-(a random walk on velocity) in continuous time to filter Argos KF and/or LS data
-and predict locations at user-specified time intervals (regular or irregular)
+(a random walk on velocity) in continuous time to filter Argos KF and/or LS data, or 
+processed light-level geolocation data. predicts locations at user-specified 
+time intervals (regular or irregular).
 }
 \examples{
-## fit crw model to multiple individuals with Argos LS data
+## fit rw model to one seal with Argos KF data
 data(ellie)
 fit <- fit_ssm(ellie, model = "rw", time.step = 24)
-plot(fit$ssm[[1]])
 
-\donttest{
-data(rope)
-fls <- fit_ssm(rope, model = "crw", time.step = 12)
+## time series plots of predicted value fits
+plot(fit, what = "predicted", type = 1)
 
-## simple diagnostic plot for individual 3,
-## showing predicted value time-series
-plot(fls$ssm[[3]], what = "predicted")
-}
+## fit crw model to both seals, with Argos KF & LS data 
+data(ellies)
+fits <- fit_ssm(ellies, model = "crw", time.step = 24)
+
+## track plots of fits for both seals
+plot(fits, what = "predicted", type = 2)
 
 }

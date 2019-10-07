@@ -14,27 +14,28 @@
 ##' @param time.step the regular time interval, in hours, to predict to.
 ##' Alternatively, a vector of prediction times, possibly not regular, must be
 ##' specified as a data.frame with id and POSIXt dates.
+##' @param map a named list of parameters as factors that are to be fixed during estimation, e.g., list(psi = factor(NA))
 ##' @param parameters a list of initial values for all model parameters and
-##' unobserved states, default is to let sfilter specifiy these. Only play with
+##' unobserved states, default is to let sfilter specify these. Only play with
 ##' this if you know what you are doing...
 ##' @param fit.to.subset fit the SSM to the data subset determined by prefilter
 ##' (default is TRUE)
 ##' @param optim numerical optimizer to be used ("nlminb" or "optim")
 ##' @param verbose report progress during minimization
+##' @param control list of control parameters for the outer optimization (type ?nlminb or ?optim for details)
 ##' @param inner.control list of control settings for the inner optimization
 ##' (see ?TMB::MakeADFUN for additional details)
+##' @param lpsi lower bound for the psi parameter
 ##'
-##' @useDynLib foieGras
 ##' @importFrom TMB MakeADFun sdreport newtonOption
 ##' @importFrom stats approx cov sd predict nlminb optim na.omit
-##' @importFrom dplyr mutate filter select full_join arrange lag bind_cols
-##' @importFrom magrittr "%>%"
+##' @importFrom dplyr mutate filter select full_join arrange lag bind_cols "%>%"
 ##' @importFrom tibble as_tibble
 ##' @importFrom sf st_crs st_coordinates st_geometry<- st_as_sf st_set_crs
 ##'
 ##' @examples
 ##' data(ellie)
-##' pf <- prefilter(ellie, vmax=10, ang=c(15,25), min.dt=120)
+##' pf <- prefilter(ellie, vmax=4, ang=c(15,25), min.dt=120)
 ##' out <- sfilter(pf, model="rw", time.step=24)
 ##'
 ##' @export
@@ -44,15 +45,25 @@ sfilter <-
            model = c("rw", "crw"),
            time.step = 6,
            parameters = NULL,
+           map = NULL,
            fit.to.subset = TRUE,
            optim = c("nlminb", "optim"),
            verbose = FALSE,
-           inner.control = NULL) {
+           control = NULL,
+           inner.control = NULL,
+           lpsi=-10) {
 
     st <- proc.time()
     call <- match.call()
     optim <- match.arg(optim)
     model <- match.arg(model)
+
+    ## populate control list if any parameters specified...
+    if (length(control)) {
+      nms <- names(control)
+      if (!is.list(control) || is.null(nms))
+        stop("'control' argument must be a named list")
+    }
 
     if(is.null(time.step)) {
       print("\nNo time.step specified, using 6 h as a default time step")
@@ -64,7 +75,6 @@ sfilter <-
     }
 
     ## drop any records flagged to be ignored, if fit.to.subset is TRUE
-    ## add is.data flag (distinquish obs from reg states)
     if(fit.to.subset) xx <- x %>% filter(keep)
     else xx <- x
 
@@ -92,7 +102,15 @@ sfilter <-
         select(date)
     }
 
+    ## add 1 s to observation time(s) that exactly match prediction time(s) & throw a warning
+    if(sum(d$date %in% ts$date) > 0) {
+      o.times <- which(d$date %in% ts$date)
+      d[o.times, "date"] <- d[o.times, "date"] + 1
+
+    }
+
     ## merge data and interpolation times
+    ## add is.data flag (distinquish obs from reg states)
     d.all <- full_join(d, ts, by = "date") %>%
       arrange(date) %>%
       mutate(isd = ifelse(is.na(isd), FALSE, isd)) %>%
@@ -104,28 +122,29 @@ sfilter <-
     dt[1] <- 0.000001 # - 0 causes numerical issues in CRW model
 
     ## use approx & MA filter to obtain state initial values
-    x.init <-
+    x.init1 <-
       approx(x = select(d, date, x),
              xout = d.all$date,
              rule = 2)$y
     x.init <-
-      stats::filter(x.init, rep(1, 10) / 10) %>% as.numeric()
-    x.init[1:4] <- x.init[5]
-    x.init[which(is.na(x.init))] <-
-      x.init[which(is.na(x.init))[1] - 1]
+      stats::filter(x.init1, rep(1, 5) / 5) %>% as.numeric()
+    x.na <- which(is.na(x.init))
+    x.init[x.na] <- x.init1[x.na]
 
-    y.init <-
+    y.init1 <-
       approx(x = select(d, date, y),
              xout = d.all$date,
              rule = 2)$y
     y.init <-
-      stats::filter(y.init, rep(1, 10) / 10) %>% as.numeric()
-    y.init[1:4] <- y.init[5]
-    y.init[which(is.na(y.init))] <-
-      y.init[which(is.na(y.init))[1] - 1]
+      stats::filter(y.init1, rep(1, 5) / 5) %>% as.numeric()
+    y.na <- which(is.na(y.init))
+    y.init[y.na] <- y.init1[y.na]
+    
     xs <- cbind(x.init, y.init)
 
-    state0 <- c(xs[1,], 0 , 0)
+    state0 <- c(xs[1,1], xs[1,2], 0 , 0)
+    attributes(state0) <- NULL
+
     if (is.null(parameters)) {
       ## Estimate stochastic innovations
       es <- xs[-1,] - xs[-nrow(xs),]
@@ -138,7 +157,7 @@ sfilter <-
       parameters <- list(
         l_sigma = log(pmax(1e-08, sigma)),
         l_rho_p = log((1 + rho) / (1 - rho)),
-        X = xs,
+        X = t(xs),
         logD = 10,
         mu = t(xs),
         v = t(xs) * 0,
@@ -149,20 +168,27 @@ sfilter <-
     }
 
     ## calculate prop'n of obs that are LS-derived
-    d <- d %>% mutate(obs.type = factor(obs.type, levels = c("LS","KF"), labels = c("LS","KF")))
+    d <- d %>% mutate(obs.type = factor(obs.type, levels = c("LS","KF","GL"), labels = c("LS","KF","GL")))
     pls <- table(d$obs.type)["LS"] / nrow(d)
-    map <- switch(model,
+    automap <- switch(model,
                   rw = {
                     if (pls == 1) {
-                      list(logD = factor(NA),
-                           l_psi = factor(NA),
+                      list(l_psi = factor(NA),
+                           logD = factor(NA),
                            mu = factor(rbind(rep(NA, nrow(xs)), rep(NA, nrow(xs)))),
                            v =  factor(rbind(rep(NA, nrow(xs)), rep(NA, nrow(xs))))
                            )
-                    } else if (pls == 0) {
-                      list(logD = factor(NA),
-                           l_tau = factor(c(NA, NA)),
+                    } else if (pls == 0 & unique(d$obs.type) == "KF") {
+                      list(l_tau = factor(c(NA, NA)),
                            l_rho_o = factor(NA),
+                           logD = factor(NA),
+                           mu = factor(rbind(rep(NA, nrow(xs)), rep(NA, nrow(xs)))),
+                           v =  factor(rbind(rep(NA, nrow(xs)), rep(NA, nrow(xs))))
+                           )
+                    } else if(pls == 0 & unique(d$obs.type == "GL")) {
+                      list(l_tau = factor(c(NA, NA)),
+                           l_psi = factor(NA),
+                           logD = factor(NA),
                            mu = factor(rbind(rep(NA, nrow(xs)), rep(NA, nrow(xs)))),
                            v =  factor(rbind(rep(NA, nrow(xs)), rep(NA, nrow(xs))))
                            )
@@ -181,7 +207,7 @@ sfilter <-
                         X = factor(cbind(rep(NA, nrow(xs)), rep(NA, nrow(xs)))),
                         l_psi = factor(NA)
                       )
-                    } else if (pls == 0) {
+                    } else if (pls == 0 & unique(d$obs.type) == "KF") {
                       list(
                         l_sigma = factor(c(NA, NA)),
                         l_rho_p = factor(NA),
@@ -189,7 +215,16 @@ sfilter <-
                         l_tau = factor(c(NA, NA)),
                         l_rho_o = factor(NA)
                       )
-                    } else if (pls > 0 & pls < 1) {
+                    } else if (pls == 0 & unique(d$obs.type) == "GL") {
+                      list(
+                        l_sigma = factor(c(NA, NA)),
+                        l_rho_p = factor(NA),
+                        X = factor(cbind(rep(NA, nrow(xs)), rep(NA, nrow(xs)))),
+                        l_tau = factor(c(NA, NA)),
+                        l_psi = factor(NA)
+                      )
+                    }
+                    else if (pls > 0 & pls < 1) {
                       list(l_sigma = factor(c(NA, NA)),
                            l_rho_p = factor(NA),
                            X = factor(cbind(rep(NA, nrow(xs)), rep(NA, nrow(xs))))
@@ -197,22 +232,35 @@ sfilter <-
                     }
                   })
 
+    if(!is.null(map)) {
+      names(map) <- paste0("l_", names(map))
+      map <- append(automap, map, after = 0)
+    } else {
+      map <- automap
+    }
+
     ## TMB - data list
+    obs_mod <- ifelse(d.all$obs.type == "LS", 0, 
+                      ifelse(d.all$obs.type == "KF", 1, 2)
+                      )
+    
     data <- list(
+      model_name = "ssm",
       Y = switch(
         model,
-        rw = cbind(d.all$x, d.all$y),
+        rw = rbind(d.all$x, d.all$y),
         crw = rbind(d.all$x, d.all$y)
       ),
       state0 = state0,
       dt = dt,
       isd = as.integer(d.all$isd),
-      proc_mod = switch(model, rw = 0, crw = 1),
-      obs_mod = ifelse(d.all$obs.type == "LS", 0, 1),
+      proc_mod = ifelse(model == "rw", 0, 1),
+      obs_mod = obs_mod,
       m = d.all$smin,
       M = d.all$smaj,
       c = d.all$eor,
-      K = cbind(d.all$amf_x, d.all$amf_y)
+      K = cbind(d.all$emf.x, d.all$emf.y),
+      GLerr = cbind(d.all$lonerr, d.all$laterr)
     )
 
     ## TMB - create objective function
@@ -226,8 +274,9 @@ sfilter <-
         parameters,
         map = map,
         random = rnd,
+        hessian = FALSE,
+        method = "L-BFGS-B",
         DLL = "foieGras",
-        hessian = TRUE,
         silent = !verbose,
         inner.control = inner.control
       )
@@ -244,10 +293,36 @@ sfilter <-
       obj$fn(x)
     }
 
+    ## Set parameter bounds - most are -Inf, Inf
+    L = c(l_sigma=c(-Inf,-Inf),
+          l_rho_p=-Inf,
+          logD=-Inf,
+          l_psi=lpsi,
+          l_tau=c(-Inf,-Inf),
+          l_rho_o=-Inf)
+    U = c(l_sigma=c(Inf,Inf),
+          l_rho_p=Inf,
+          logD=Inf,
+          l_psi=Inf,
+          l_tau=c(Inf,Inf),
+          l_rho_o=Inf)
+    names(L)[c(1:2,6:7)] <- c("l_sigma", "l_sigma", "l_tau", "l_tau")
+    names(U)[c(1:2,6:7)] <- c("l_sigma", "l_sigma", "l_tau", "l_tau")
+
+    # Remove inactive parameters from bounds
+    L <- L[!names(L) %in% names(map)]
+    U <- U[!names(U) %in% names(map)]
+
     ## Minimize objective function
     opt <-
       suppressWarnings(switch(optim,
-                              nlminb = try(nlminb(obj$par, obj$fn, obj$gr))
+                              nlminb = try(nlminb(obj$par,
+                                                  obj$fn,
+                                                  obj$gr,
+                                                  control = control,
+                                                  lower = L,
+                                                  upper = U
+                              ))
                               , #myfn #obj$fn
                               optim = try(do.call(
                                 optim,
@@ -255,7 +330,10 @@ sfilter <-
                                   par = obj$par,
                                   fn = obj$fn,
                                   gr = obj$gr,
-                                  method = "L-BFGS-B"
+                                  method = "L-BFGS-B",
+                                  control = control,
+                                  lower = L,
+                                  upper = U
                                 )
                               ))))
 
@@ -268,13 +346,18 @@ sfilter <-
 
       switch(model,
              rw = {
-               rdm <-
-                 matrix(summary(rep, "random"),
-                        nrow(d.all),
-                        4,
-                        dimnames = list(NULL, c("x", "y", "x.se", "y.se")))
+               tmp <- summary(rep, "random")
+               rdm <- cbind(tmp[seq(1, nrow(tmp), by = 2), ],
+                            tmp[seq(2, nrow(tmp), by = 2), ]
+               ) %>%
+                 data.frame() %>%
+                 select(1,3,2,4) %>%
+                 rename(x = "Estimate",
+                        y = "Estimate.1",
+                        x.se = "Std..Error",
+                        y.se = "Std..Error.1")
 
-               rdm <- as.data.frame(rdm) %>%
+               rdm <- rdm %>%
                  mutate(
                    id = unique(d.all$id),
                    date = d.all$date,
@@ -288,15 +371,15 @@ sfilter <-
                loc <- tmp[rownames(tmp) == "mu",]
                vel <- tmp[rownames(tmp) == "v",]
                loc <-
-                 cbind(loc[seq(1, dim(loc)[1], by = 2),], loc[seq(2, dim(loc)[1], by =
-                                                                    2),]) %>%
-                 as_tibble() %>%
+                 cbind(loc[seq(1, dim(loc)[1], by = 2),],
+                       loc[seq(2, dim(loc)[1], by = 2),]) %>%
+                 data.frame() %>%
                  select(1, 3, 2, 4)
                names(loc) <- c("x", "y", "x.se", "y.se")
                vel <-
-                 cbind(vel[seq(1, dim(vel)[1], by = 2),], vel[seq(2, dim(vel)[1], by =
-                                                                    2),]) %>%
-                 as_tibble() %>%
+                 cbind(vel[seq(1, dim(vel)[1], by = 2),],
+                       vel[seq(2, dim(vel)[1], by = 2),]) %>%
+                 data.frame() %>%
                  select(1, 3, 2, 4)
                names(vel) <- c("u", "v", "u.se", "v.se")
 
@@ -325,12 +408,12 @@ sfilter <-
              })
 
       ## Fitted values (estimated locations at observation times)
-      fd <- rdm %>%
+      fv <- rdm %>%
         filter(isd) %>%
         select(-isd)
 
       ## Predicted values (estimated locations at regular time intervals, defined by `ts`)
-      pd <- rdm %>%
+      pv <- rdm %>%
         filter(!isd) %>%
         select(-isd)
 
@@ -342,10 +425,11 @@ sfilter <-
 
       out <- list(
         call = call,
-        predicted = pd,
-        fitted = fd,
+        predicted = pv,
+        fitted = fv,
         par = fxd,
         data = x,
+        isd = d.all$isd,
         inits = parameters,
         pm = model,
         ts = time.step,
@@ -353,6 +437,7 @@ sfilter <-
         tmb = obj,
         rep = rep,
         aic = aic,
+        optimiser = optim,
         time = proc.time() - st
       )
     } else {
@@ -367,7 +452,6 @@ sfilter <-
         errmsg = opt
       )
     }
-
-    class(out) <- append("foieGras", class(out))
+    class(out) <- append("ssm", class(out))
     out
   }
