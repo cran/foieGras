@@ -4,8 +4,7 @@
 \alias{plot.fG_ssm}
 \title{plot}
 \usage{
-\method{plot}{fG_ssm}(x, what = c("fitted", "predicted"), type = 1,
-  ncol = 1, ...)
+\method{plot}{fG_ssm}(x, what = c("fitted", "predicted"), type = 1, ncol = 1, ...)
 }
 \arguments{
 \item{x}{a \code{foieGras} ssm fit object with class `fG_ssm`}
@@ -19,9 +18,9 @@
 \item{...}{additional arguments to be ignored}
 }
 \value{
-a ggplot object with either: (type = 1) 1-D time series of fits to data, 
+a ggplot object with either: (type = 1) 1-d time series of fits to data, 
 separated into x and y components (units = km) with prediction uncertainty ribbons (2 x SE); 
-or (type = 2) 2-D fits to data (units = km)
+or (type = 2) 2-d fits to data (units = km)
 }
 \description{
 visualize multiple fits from an fG compound tibble

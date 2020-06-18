@@ -6,7 +6,7 @@
 ##' optimizer (\code{nlminb} or \code{optim}); structures and passes output
 ##' object to \code{fit_mpm}
 ##'
-##' @details called by \code{fit_mpm}, see ?fit_mpm.
+##' @details called by \code{fit_mpm}, not intended for general use. see ?fit_mpm.
 ##'
 ##' @param x temporally regularized location data, eg. output from \code{fit_ssm}
 ##' @param model specify whether MPM is to be fit with unpooled ("mpm") or pooled ("jmpm") RW variance(s). 
@@ -17,9 +17,9 @@
 ##' (see ?TMB::MakeADFUN for additional details)
 ##'
 ##' @importFrom TMB MakeADFun sdreport newtonOption
-##' @importFrom dplyr mutate filter select full_join arrange lag bind_cols "%>%"
+##' @importFrom dplyr mutate arrange "%>%" count
 ##' @importFrom tibble tibble
-##' @importFrom stats plogis
+##' @importFrom stats plogis median
 ##'
 ##' @export
 
@@ -42,31 +42,66 @@ mpmf <-
         stop("'control' argument must be a named list")
     }
    
-    switch(model,
+    # Create a tid column if there is none specified
+    if(all(colnames(x) != "tid")){
+      x$tid <- NA
+    }
+    
+    # ordering the data to make sure we have continuous tracks and ids are ordered
+    x <- x %>% arrange(id, tid, date)
+    
+    # get index of start and end of tracks
+    x <- x %>% mutate(idtid = paste(id, tid, sep=""))
+    idx <- x$idtid %>%
+      table() %>%
+      as.numeric() %>%
+      cumsum() %>%
+      c(0, .)
+    
+    # Create dt vector
+    # dt = t_i - t_{i-1} and include in data.tmb
+    x$dt <- c(NA, diff(x$date))
+    x$dt[idx[1:(length(idx)-1)] + 1] <- NA
+    # Scale to median
+    x$dt <- x$dt / median(x$dt, na.rm=TRUE)
+
+        switch(model,
            jmpm = {
-             A <- length(unique(x$id))
-             idx <- c(0, cumsum(as.numeric(table(x$id))))
-             
+             # Number of tracks (or individual if only one track per individual)
+             A <- nrow(count(x, id, tid))
              data.tmb <- list(
                model_name = model,
                x = cbind(x$lon, x$lat),
-               A = A,
-               idx = idx
+               dt = x$dt,
+               A = as.integer(A),
+               idx = as.integer(idx)
              )
-             
            },
            mpm = {
              data.tmb <- list(
                model_name = model,
-               x = cbind(x$lon, x$lat)
+               x = cbind(x$lon, x$lat),
+               dt = x$dt
              )
            })
+  
+    parameters <- switch(model, 
+                         jmpm = {
+                           list(
+                             lg = rep(0, dim(x)[1]),
+                             log_sigma = c(0, 0),
+                             log_sigma_g = 0
+                             )
+                           },
+                           mpm = {
+                             list(
+                               lg = rep(0, dim(x)[1]),
+                               log_sigma = c(0, 0),
+                               log_sigma_g = 0
+                             )
+                           })
     
-    parameters <- list(
-      lg = rep(0, dim(x)[1]),
-      l_sigma = c(0, 0),
-      l_sigma_g = 0
-    ) 
+##    rnd <- switch(model, mpm = "lg", jmpm = c("lg","log_sigma_g"))
     
     ## TMB - create objective function
     if (is.null(inner.control) | !"smartsearch" %in% names(inner.control)) {
@@ -77,7 +112,7 @@ mpmf <-
       MakeADFun(
         data = data.tmb,
         parameters = parameters,
-        random = c("lg"),
+        random = "lg",
         DLL = "foieGras",
         silent = !verbose,
         inner.control = inner.control
@@ -85,7 +120,6 @@ mpmf <-
     
     ## add par values to trace if verbose = TRUE
     myfn <- function(x) {
-      print("pars:")
       print(x)
       obj$fn(x)
     }
@@ -104,12 +138,13 @@ mpmf <-
                                 args = list(
                                   par = obj$par,
                                   fn = obj$fn,
+                                  #fn = myfn,
                                   gr = obj$gr,
                                   method = "L-BFGS-B",
                                   control = control
                                 )
                               ))))
-    
+
     
     ## Parameters, states and the fitted values
     rep <- suppressWarnings(try(sdreport(obj, getReportCovariance = TRUE)))
@@ -117,14 +152,24 @@ mpmf <-
     fxd_log <- summary(rep, "fixed")
     rdm <- summary(rep, "random")
     
-    lg <- rdm[rownames(rdm) %in% "lg", ]
-    
-    fitted <- tibble(
-      id = x$id,
-      date = x$date,
-      g = plogis(lg[, 1]),
-      g.se = lg[,2]      ## FIXME: rescale this to SE of prob
-    )
+    lgs <- rdm[rownames(rdm) %in% "lg", ]
+        
+    if(all(is.na(x$tid))) {
+      fitted <- tibble(
+        id = x$id,
+        date = x$date,
+        g = plogis(lgs[, 1]),
+        g.se = lgs[, 2]      
+      )
+    } else {
+      fitted <- tibble(
+        id = x$id,
+        tid = x$tid,
+        date = x$date,
+        g = plogis(lgs[, 1]),
+        g.se = lgs[, 2]     
+      )
+    }
     
     if (optim == "nlminb") {
       aic <- 2 * length(opt[["par"]]) + 2 * opt[["objective"]]

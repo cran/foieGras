@@ -1,21 +1,31 @@
 ##' @title emf
 ##'
-##' @details Error Multiplication Factors for Argos (and GPS) locations. Called by \code{prefilter()}
+##' @param gps error multiplication factor(s) for GPS locations, can be a scalar (x = y) or vector of length 2 (x != y)
+##' @param emf.x error multiplication factors for Argos longitude classes 3, 2, 1, 0, A, B (Z assumed equal to B)
+##' @param emf.y error multiplication factors for Argos latitude classes 3, 2, 1, 0, A, B (Z assumed equal to B)
+##' @details Error Multiplication Factors for Argos (and GPS) locations. Default assumption is that GPS locations are
+##' 10x more accurate than Argos lc 3 in both x and y directions. 
 ##'
 ##' @importFrom tibble as_tibble
 ##' @importFrom dplyr mutate "%>%"
 ##'
-##' @examples
-##' emf()
+##' 
 ##' @export
 
-emf <- function() {
+emf <- function(gps = 0.1, 
+                emf.x = c(1, 1.54, 3.72, 13.51, 23.9, 44.22),
+                emf.y = c(1, 1.29, 2.55, 14.99, 22.0, 32.53)
+                ) {
 
-  gps_emf <- 0.1
-
+  if(!length(gps) %in% 1:2) stop("GPS emf must be a vector of length 1 or 2")
+  if(length(emf.x) != 6) stop("Argos emf.x must be a vector of length 6")
+  if(length(emf.y) != 6) stop("Argos emf.y must be a vector of length 6")
+  
+  if(length(gps) == 1) gps <- c(gps, gps)
+  
   df <- data.frame(
-    emf.x = c(gps_emf, 1, 1.54, 3.72, 13.51, 23.9, 44.22, 44.22),
-    emf.y = c(gps_emf, 1, 1.29, 2.55, 14.99, 22.0, 32.53, 32.53),
+    emf.x = c(gps[1], emf.x, emf.x[6]),
+    emf.y = c(gps[2], emf.y, emf.y[6]),
     lc = c("G", "3", "2", "1", "0", "A", "B", "Z")
   ) %>%
     mutate(lc = as.character(lc))

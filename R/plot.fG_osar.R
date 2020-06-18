@@ -8,15 +8,14 @@
 ##' @param ... additional arguments to be ignored
 ##' @importFrom ggplot2 ggplot geom_qq geom_qq_line geom_histogram geom_boxplot geom_vline geom_hline
 ##' @importFrom ggplot2 aes facet_grid facet_wrap coord_flip
-##' @importFrom dplyr "%>%" filter
 ##' @method plot fG_osar
 ##'
 ##' @examples
 ##' ## load example osar output (to save time)
 ##' data(fssm)
-##' fres <- osar(fssm)
-##' plot(fres, "qq")
-##' plot(fres, "hist")
+##' d <- fssm[1, ] ## just use first seal to save time
+##' dres <- osar(d)
+##' plot(dres, type = "qq")
 ##'
 ##' @export
 
@@ -32,13 +31,15 @@ plot.fG_osar <- function(x, type = c("qqnorm", "histogram"), bw = 0.5, ...)
   
   switch(type,
          qqnorm = {
-           p <- ggplot(x %>% filter(!is.na(residual)), aes(sample = residual)) +
+           x <- x[!is.na(x$residual), ]
+           p <- ggplot(x, aes(sample = residual)) +
              geom_qq() +
              geom_qq_line(col = "firebrick") +
              facet_grid(id ~ coord)
          },
          histogram = {
-           p <- ggplot(x %>% filter(!is.na(residual)), aes(x = residual)) +
+           x <- x[!is.na(x$residual), ]
+           p <- ggplot(x, aes(x = residual)) +
              geom_histogram(binwidth = bw, col = grey(0.9), lwd = 0.5) +
              geom_vline(xintercept = 0, lty = 2, col = "firebrick") +
              facet_grid(id ~ coord)

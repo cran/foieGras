@@ -2,7 +2,8 @@
 % Please edit documentation in R/print.ssm.R
 \name{print.ssm}
 \alias{print.ssm}
-\title{print \code{ssm} fit object summary information}
+\alias{print}
+\title{print \code{foieGras} fit object summary information}
 \usage{
 \method{print}{ssm}(x, ...)
 }
@@ -12,7 +13,7 @@
 \item{...}{unused. For compatibility with the generic method.}
 }
 \description{
-print \code{ssm} fit object summary information
+print \code{foieGras} fit object summary information
 }
 \examples{
 ## see summary fit output

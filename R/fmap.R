@@ -7,17 +7,18 @@
 ##' @param what specify which location estimates to map: fitted or predicted
 ##' @param obs include Argos observations on map (logical)
 ##' (logical); ignored if `obs = FALSE`
-##' @param crs `proj4string` for reprojecting locations, if NULL the
+##' @param crs `proj4string` for re-projecting locations, if NULL the
 ##' default projection ("+proj=merc") for the fitting the SSM will be used
 ##' @param ext.rng factors to extend the plot range in x and y dimensions
 ##' (can exceed 1)
-##' @param size size of estimated location points
+##' @param size size of estimated location points; optionally a vector of length 2, with size of observed locations given by 2nd value
+##' @param col colour of observed locations (ignored if obs = FALSE)
 ##' @importFrom ggplot2 ggplot geom_sf aes aes_string ggtitle xlim ylim unit element_text theme 
 ##' @importFrom ggplot2 element_blank scale_colour_viridis_c scale_colour_viridis_d
 ##' @importFrom sf st_bbox st_transform st_crop st_as_sf st_buffer st_crs st_coordinates st_cast
 ##' @importFrom utils data
 ##' @importFrom grDevices extendrange grey
-##' @importFrom dplyr summarise "%>%"
+##' @importFrom dplyr summarise "%>%" group_by
 ##' @export
 
 fmap <- function(x,
@@ -25,7 +26,8 @@ fmap <- function(x,
                      obs = FALSE,
                      crs = NULL,
                      ext.rng = c(0.05, 0.05),
-                     size = 1)
+                     size = 1,
+                     col = "black")
 {
   what <- match.arg(what)
 
@@ -34,18 +36,18 @@ fmap <- function(x,
       sf_locs <- grab(x, what=what)
 
     else if(length(unique(sapply(x$ssm, function(.) st_crs(.$predicted)$epsg))) > 1) {
-      stop("individual fit objects with differing projections not currently supported")
+      stop("individual foieGras fit objects with differing projections not currently supported")
     }
 
   } else {
-    stop("input must be a foieGras ssm fit object with class `fG_ssm`")
+    stop("input must be a foieGras ssm fit object with class fG_ssm")
   }
 
   if (is.null(crs)) prj <- st_crs(sf_locs)
   else {
     prj <- crs
     if(!is.character(prj)) stop("\ncrs must be a proj4string, 
-                                \neg. `+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=km +no_defs`")
+                                \neg. `+proj=stere +lat_0=-90 +lon_0=0 +ellps=WGS84 +units=km +no_defs`")
       #prj <- paste0("+init=epsg:", prj)
 
     if(length(grep("+units=km", prj, fixed = TRUE)) == 0) {
@@ -84,7 +86,7 @@ fmap <- function(x,
     ylim(bounds[c("ymin","ymax")])
 
   if(obs)
-    p <- p + geom_sf(data = sf_data, colour = grey(0.7), size = 1, shape = 9, alpha = 0.75)
+    p <- p + geom_sf(data = sf_data, colour = col, size = ifelse(length(size) == 2, size[2], 0.5), shape = 9, alpha = 0.75)
 
   if(length(unique(x$id)) > 1) {
 
@@ -95,7 +97,7 @@ fmap <- function(x,
               ) +
       geom_sf(data = sf_locs,
               aes_string(colour = "id"),
-              size = size,
+              size = ifelse(length(size) == 2, size[1], 1),
               show.legend = "point"
                      ) +
     scale_colour_viridis_d() +
@@ -111,7 +113,7 @@ fmap <- function(x,
                      size = 0.1) +
       geom_sf(data = sf_locs,
                     aes(colour = as.numeric(as.Date(date))),
-                     size = size
+                     size = ifelse(length(size) == 2, size[1], 1)
                      ) +
       scale_colour_viridis_c(breaks = as.numeric(lab_dates), option = "viridis", labels = lab_dates) +
       theme(legend.position = "bottom",

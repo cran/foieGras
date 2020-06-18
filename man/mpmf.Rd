@@ -4,8 +4,14 @@
 \alias{mpmf}
 \title{fit the move persistence model to regularized location data}
 \usage{
-mpmf(x, model = c("mpm", "jmpm"), optim = c("nlminb", "optim"),
-  verbose = FALSE, control = NULL, inner.control = NULL)
+mpmf(
+  x,
+  model = c("mpm", "jmpm"),
+  optim = c("nlminb", "optim"),
+  verbose = FALSE,
+  control = NULL,
+  inner.control = NULL
+)
 }
 \arguments{
 \item{x}{temporally regularized location data, eg. output from \code{fit_ssm}}
@@ -29,5 +35,5 @@ optimizer (\code{nlminb} or \code{optim}); structures and passes output
 object to \code{fit_mpm}
 }
 \details{
-called by \code{fit_mpm}, see ?fit_mpm.
+called by \code{fit_mpm}, not intended for general use. see ?fit_mpm.
 }

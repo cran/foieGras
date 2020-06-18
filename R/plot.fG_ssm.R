@@ -8,14 +8,14 @@
 ##' @param ncol number of columns to use for faceting. Default is ncol = 1 but this may be increased for multi-individual fit objects
 ##' @param ... additional arguments to be ignored
 ##' 
-##' @return a ggplot object with either: (type = 1) 1-D time series of fits to data, 
+##' @return a ggplot object with either: (type = 1) 1-d time series of fits to data, 
 ##' separated into x and y components (units = km) with prediction uncertainty ribbons (2 x SE); 
-##' or (type = 2) 2-D fits to data (units = km)
+##' or (type = 2) 2-d fits to data (units = km)
 ##' 
-##' @importFrom ggplot2 ggplot geom_point geom_path aes_string ggtitle theme_bw theme element_blank geom_rug geom_path
-##' @importFrom ggplot2 element_text xlab scale_colour_brewer theme_dark labeller label_both label_value geom_ribbon
+##' @importFrom ggplot2 ggplot geom_point geom_path aes_string ggtitle geom_rug
+##' @importFrom ggplot2 element_text xlab scale_colour_brewer labeller label_both label_value geom_ribbon
 ##' @importFrom tidyr gather
-##' @importFrom dplyr "%>%" select bind_cols rename filter
+##' @importFrom dplyr "%>%" select bind_cols rename
 ##' @importFrom tibble enframe
 ##' @method plot fG_ssm
 ##'
@@ -29,7 +29,6 @@
 
 plot.fG_ssm <- function(x, what = c("fitted","predicted"), type = 1, ncol = 1, ...)
 {
-  
   if (length(list(...)) > 0) {
     warning("additional arguments ignored")
   }
@@ -42,15 +41,20 @@ plot.fG_ssm <- function(x, what = c("fitted","predicted"), type = 1, ncol = 1, .
              ssm <- grab(x, "fitted", as_sf = FALSE)
            },
            predicted = {
+             if(any(sapply(x$ssm, function(.) is.na(.$ts)))) {
+               stop("\n there are no predicted locations because you used time.step = NA when calling `fit_ssm`")
+             } else {
              ssm <- grab(x, "predicted", as_sf = FALSE)
+             }
            })
     
     d <- grab(x, "data", as_sf = FALSE) %>%
       mutate(lc = factor(lc, levels=c("3","2","1","0","A","B","Z"), ordered=TRUE))
     
     if(type == 1) {
+      
       foo <- ssm %>% select(id, x, y) %>% gather(., key = "coord", value = "value", x, y)
-      foo.se <- ssm %>% select(id, x.se, y.se) %>% gather(., key = "coord", value = "se", x.se, y.se)
+      foo.se <- ssm %>% select(x.se, y.se) %>% gather(., key = "coord.se", value = "se", x.se, y.se)
       bar <- rep(ssm$date, 2) %>% enframe(name = NULL) %>% rename(date = "value")
       
       foo.d <- d %>% select(id, x, y) %>% gather(., key = "coord", value = "value", x, y)

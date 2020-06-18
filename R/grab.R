@@ -1,25 +1,25 @@
-##' @title grab tbl's by name from a foieGras model object
+##' @title grab tibble's by name from a foieGras model object
 ##'
-##' @description `grab()` lets you obtain `fitted`, `predicted`, or `data` tbl's
-##' from a compound tbl created when fitting to multiple individual data sets.
-##' The specified tbl's are appended to a single output tbl.
+##' @description `grab()` lets you obtain `fitted`, `predicted`, or `data` tibble's
+##' from a compound tibble created when fitting to multiple individual data sets.
+##' The specified tibble's are appended to a single output tibble.
 ##'
 ##' @param x a \code{foieGras} ssm or mpm model object
 ##' @param what the tibble to be grabbed; either `fitted`, `predicted` (ssm only), or
 ##' `data` (single letters can be used)
-##' @param as_sf logical; if FALSE then return a tibble with unprojected lonlat
+##' @param as_sf logical; if FALSE then return a tibble with un-projected lonlat
 ##' coordinates, otherwise return an sf tibble. Ignored if x is an mpm model object.
 ##'
-##' @return a tbl with all individual tbl's appended
+##' @return a tibble with all individual tibble's appended
 ##'
-##' @importFrom dplyr tbl_df arrange mutate select bind_rows "%>%"
+##' @importFrom dplyr select bind_rows "%>%"
 ##' @importFrom sf st_crs st_coordinates st_transform st_geometry st_as_sf st_set_crs
 ##' @importFrom tibble as_tibble
 ##'
 ##' @examples
 ##' ## load example foieGras fit object (to save time)
 ##' data(fssm)
-##' ## grab predicted values as an unprojected tibble
+##' ## grab predicted values as an un-projected tibble
 ##' preds <- grab(fssm, what = "predicted", as_sf = FALSE)
 ##' 
 ##' @export
@@ -31,16 +31,20 @@ grab <- function(x, what = "fitted", as_sf = TRUE) {
   if(!inherits(x, "fG_ssm") & !inherits(x, "fG_mpm")) 
     stop("a foieGras ssm or mpm model object with class `fG_ssm` of `fG_mpm`, respectively, must be supplied")
   if(!what %in% c("fitted","predicted","data"))
-    stop("only `fitted`, `predicted` or `data` objects can be grabbed")
+    stop("only `fitted`, `predicted` or `data` objects can be grabbed from an fG_ssm fit object")
   if(inherits(x, "fG_mpm") & what == "predicted")
     stop("predicted values do not exist for `fG_mpm` objects; use what = `fitted` instead")
+  if(inherits(x, "fG_ssm")) {
+    if(any(sapply(x$ssm, function(.) is.na(.$ts))) && what == "predicted")
+      stop("\n there are no predicted locations because you used time.step = NA when calling `fit_ssm`. \n Either grab `fitted` values or re-fit with a positive-valued `time.step`")
+  }
   
   switch(class(x)[1],
          fG_ssm = {
-           ## remove optimiser crash results from extraction
+           ## remove optimizer crash results from extraction
            nf <- which(sapply(x$ssm, length) < 15)
            if (length(nf) > 0) {
-             sprintf("%d optimiser crashes removed from output", length(nf))
+             sprintf("%d optimizer crashes removed from output", length(nf))
              sprintf("ids: %s", x[nf, "id"])
              x <- x[-nf,]
            }

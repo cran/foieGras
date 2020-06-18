@@ -2,12 +2,22 @@
 % Please edit documentation in R/sfilter.R
 \name{sfilter}
 \alias{sfilter}
-\title{fit the state-space model to \code{prefilter}-ed data}
+\title{fit the state-space model to data after passing through \code{prefilter}}
 \usage{
-sfilter(x, model = c("rw", "crw"), time.step = 6, parameters = NULL,
-  map = NULL, fit.to.subset = TRUE, optim = c("nlminb", "optim"),
-  verbose = FALSE, control = NULL, inner.control = NULL,
-  lpsi = -10)
+sfilter(
+  x,
+  model = c("rw", "crw"),
+  time.step = 6,
+  scale = FALSE,
+  parameters = NULL,
+  map = NULL,
+  fit.to.subset = TRUE,
+  optim = c("nlminb", "optim"),
+  verbose = 1,
+  control = NULL,
+  inner.control = NULL,
+  lpsi = -10
+)
 }
 \arguments{
 \item{x}{Argos data passed through prefilter()}
@@ -17,6 +27,8 @@ sfilter(x, model = c("rw", "crw"), time.step = 6, parameters = NULL,
 \item{time.step}{the regular time interval, in hours, to predict to.
 Alternatively, a vector of prediction times, possibly not regular, must be
 specified as a data.frame with id and POSIXt dates.}
+
+\item{scale}{scale location data for more efficient optimization.}
 
 \item{parameters}{a list of initial values for all model parameters and
 unobserved states, default is to let sfilter specify these. Only play with
@@ -29,7 +41,7 @@ this if you know what you are doing...}
 
 \item{optim}{numerical optimizer to be used ("nlminb" or "optim")}
 
-\item{verbose}{report progress during minimization}
+\item{verbose}{report progress during minimization (0 = silent; 1 = show parameter trace [default]; 2 = show optimizer trace)}
 
 \item{control}{list of control parameters for the outer optimization (type ?nlminb or ?optim for details)}
 
@@ -41,12 +53,12 @@ this if you know what you are doing...}
 \description{
 generates initial values for model parameters and unobserved states;
 structures data and initial values for C++ \code{TMB} template;
-fits state-space model; minimises the joint log-likelihood via the selected
+fits state-space model; minimizes the joint log-likelihood via the selected
 optimizer (\code{nlminb} or \code{optim}); structures and passes output
 object to \code{fit_ssm}
 }
 \details{
-called by \code{fit_ssm}. \code{sfilter} can only fit to an
+called by \code{fit_ssm}, not intended for general use. \code{sfilter} can only fit to an
 individual track, use \code{fit_ssm} to fit to multiple tracks (see ?fit_ssm).
 }
 \examples{

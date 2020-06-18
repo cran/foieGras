@@ -4,8 +4,15 @@
 \alias{fmap}
 \title{fmap}
 \usage{
-fmap(x, what = c("fitted", "predicted"), obs = FALSE, crs = NULL,
-  ext.rng = c(0.05, 0.05), size = 1)
+fmap(
+  x,
+  what = c("fitted", "predicted"),
+  obs = FALSE,
+  crs = NULL,
+  ext.rng = c(0.05, 0.05),
+  size = 1,
+  col = "black"
+)
 }
 \arguments{
 \item{x}{a foieGras fitted object}
@@ -15,13 +22,15 @@ fmap(x, what = c("fitted", "predicted"), obs = FALSE, crs = NULL,
 \item{obs}{include Argos observations on map (logical)
 (logical); ignored if `obs = FALSE`}
 
-\item{crs}{`proj4string` for reprojecting locations, if NULL the
+\item{crs}{`proj4string` for re-projecting locations, if NULL the
 default projection ("+proj=merc") for the fitting the SSM will be used}
 
 \item{ext.rng}{factors to extend the plot range in x and y dimensions
 (can exceed 1)}
 
-\item{size}{size of estimated location points}
+\item{size}{size of estimated location points; optionally a vector of length 2, with size of observed locations given by 2nd value}
+
+\item{col}{colour of observed locations (ignored if obs = FALSE)}
 }
 \description{
 map foieGras fitted or predicted locations, with or without

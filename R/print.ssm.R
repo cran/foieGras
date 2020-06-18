@@ -1,7 +1,8 @@
-##' @title print \code{ssm} fit object summary information
+##' @title print \code{foieGras} fit object summary information
 ##'
 ##' @method print ssm
 ##'
+##' @aliases print
 ##' @param x a foieGras ssm fit object
 ##' @param ... unused. For compatibility with the generic method.
 ##'
@@ -31,9 +32,10 @@ print.ssm <- function(x, ...)
   cat("number of regularised state estimates:", nbrStates, "\n\n")
   cat("parameter estimates\n")
   cat("-------------------\n")
-  print(round(parm, 3), justify = "right")
+  print(round(parm, 5), justify = "right")
   cat("-------------------\n")
   cat("negative log-likelihood:", nll, "\n")
-  cat("convergence:", x$opt$message, "\n\n")
+  cat("convergence:", ifelse(x$opt$convergence==0, "yes", "no"), "\n\n")
+      
 
 }

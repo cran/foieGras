@@ -12,10 +12,10 @@
 ##' ## see summary fit output
 ##' ## load example foieGras fit object (to save time)
 ##' data(fssm)
-##' fres <- osar(fssm)
-##' plot(fres)
+##' d <- fssm[1, ] ## just use the first seal to save time
+##' dres <- osar(d)
 ##'
-##' @importFrom dplyr "%>%" select slice mutate rename bind_rows everything filter
+##' @importFrom dplyr "%>%" select slice mutate bind_rows everything
 ##' @importFrom tibble as_tibble
 ##' @importFrom TMB oneStepPredict
 ##' @importFrom future makeClusterPSOCK availableCores plan cluster
@@ -54,7 +54,7 @@ osar <- function(x, method = "fullGaussian", ...)
     })
     }
   } else {
-    stop("a foieGras ssm compound tbl is required")
+    stop("a foieGras ssm fit object with class fG_ssm is required")
   }
   
   cr <- sapply(r, function(.) inherits(., "try-error"))
@@ -63,7 +63,7 @@ osar <- function(x, method = "fullGaussian", ...)
   if (any(cr)) {
     ## re-try on failures
     redo <- x[which(cr), ]
-    if(nrow(redo) > 1) {
+    if(nrow(redo) > 3) {
       cat("running in parallel, this could take a while...\n")
       cl <- makeClusterPSOCK(availableCores())
       plan(cluster, workers = cl)

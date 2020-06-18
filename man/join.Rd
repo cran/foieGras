@@ -4,14 +4,16 @@
 \alias{join}
 \title{join an mpm-estimated behavioural index to ssm-predicted locations}
 \usage{
-join(ssm, mpm, as_sf = TRUE)
+join(ssm, mpm, what.ssm = "predicted", as_sf = TRUE)
 }
 \arguments{
 \item{ssm}{a \code{foieGras} ssm fitted model object}
 
 \item{mpm}{a \code{foieGras} mpm fitted model object}
 
-\item{as_sf}{logical; if FALSE then return a tibble with unprojected lonlat
+\item{what.ssm}{specifies whether ssm `predicted` or `fitted` values are to be extracted}
+
+\item{as_sf}{logical; if FALSE then return a tibble with un-projected lonlat
 coordinates, otherwise return an sf tibble}
 }
 \value{
@@ -24,7 +26,7 @@ a single tbl with all individuals
 ## load example foieGras fit objects (to save time)
 data(fssm)
 data(fmpm)
-## join predicted values as an unprojected tibble
+## join predicted values as an un-projected tibble
 fsmp <- join(fssm, fmpm, as_sf = FALSE)
 fsmp
 }
