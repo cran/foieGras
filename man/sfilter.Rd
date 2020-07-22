@@ -13,6 +13,7 @@ sfilter(
   map = NULL,
   fit.to.subset = TRUE,
   optim = c("nlminb", "optim"),
+  optMeth = c("L-BFGS-B", "BFGS", "Nelder-Mead", "CG", "SANN", "Brent"),
   verbose = 1,
   control = NULL,
   inner.control = NULL,
@@ -41,6 +42,8 @@ this if you know what you are doing...}
 
 \item{optim}{numerical optimizer to be used ("nlminb" or "optim")}
 
+\item{optMeth}{optimization method to use (default is "L-BFGS-B"), ignored if optim = "nlminb"}
+
 \item{verbose}{report progress during minimization (0 = silent; 1 = show parameter trace [default]; 2 = show optimizer trace)}
 
 \item{control}{list of control parameters for the outer optimization (type ?nlminb or ?optim for details)}
@@ -61,9 +64,4 @@ object to \code{fit_ssm}
 called by \code{fit_ssm}, not intended for general use. \code{sfilter} can only fit to an
 individual track, use \code{fit_ssm} to fit to multiple tracks (see ?fit_ssm).
 }
-\examples{
-data(ellie)
-pf <- prefilter(ellie, vmax=4, ang=c(15,25), min.dt=120)
-out <- sfilter(pf, model="rw", time.step=24)
-
-}
+\keyword{internal}

@@ -4,7 +4,15 @@
 \alias{plot.fG_ssm}
 \title{plot}
 \usage{
-\method{plot}{fG_ssm}(x, what = c("fitted", "predicted"), type = 1, ncol = 1, ...)
+\method{plot}{fG_ssm}(
+  x,
+  what = c("fitted", "predicted"),
+  type = 1,
+  outlier = TRUE,
+  pages = 1,
+  ncol = 2,
+  ...
+)
 }
 \arguments{
 \item{x}{a \code{foieGras} ssm fit object with class `fG_ssm`}
@@ -13,7 +21,11 @@
 
 \item{type}{of plot to generate: 1-d time series for lon and lat separately (type = 1, default) or 2-d track plot (type = 2)}
 
-\item{ncol}{number of columns to use for faceting. Default is ncol = 1 but this may be increased for multi-individual fit objects}
+\item{outlier}{include outlier locations dropped by prefilter (outlier = TRUE, default)}
+
+\item{pages}{plots of all individuals on a single page (pages = 1; default) or each individual on a separate page (pages = 0)}
+
+\item{ncol}{number of columns to use for faceting. Default is ncol = 2 but this may be increased for multi-individual fit objects}
 
 \item{...}{additional arguments to be ignored}
 }
@@ -23,12 +35,12 @@ separated into x and y components (units = km) with prediction uncertainty ribbo
 or (type = 2) 2-d fits to data (units = km)
 }
 \description{
-visualize multiple fits from an fG compound tibble
+visualize fits from an fG_ssm object
 }
 \examples{
 ## load example foieGras fit object (to save time)
-data(fssm)
-plot(fssm, what = "f", type = 1)
-plot(fssm, what = "p", type = 2)
+data(xs)
+plot(xs, what = "f", type = 1)
+plot(xs, what = "p", type = 2)
 
 }

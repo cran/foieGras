@@ -7,7 +7,8 @@
 fit_mpm(
   x,
   model = c("mpm", "jmpm"),
-  optim = c("optim", "nlminb"),
+  optim = "optim",
+  optMeth = "L-BFGS-B",
   verbose = 1,
   control = NULL,
   inner.control = NULL
@@ -19,6 +20,8 @@ fit_mpm(
 \item{model}{mpm model to fit; either \code{mpm} with unpooled random walk variance parameters (\code{sigma_(g,i)}) or \code{jmpm} with a single, pooled random variance parameter (\code{sigma_g})}
 
 \item{optim}{numerical optimizer}
+
+\item{optMeth}{optimization method to use (default is "L-BFGS-B"), ignored if optim = "nlminb" (see ?optim for details)}
 
 \item{verbose}{report progress during minimization}
 
@@ -39,8 +42,8 @@ fit a random walk with time-varying move persistence to location data (e.g., out
 }
 \examples{
 ## fit jmpm to two southern elephant seals
-data(fssm)
-dmp <- grab(fssm, "predicted", as_sf=FALSE)
+data(xs)
+dmp <- grab(xs, "predicted", as_sf=FALSE)
 dmp <- dmp[, c("id", "date", "lon", "lat")]
 fmpm <- fit_mpm(dmp, model = "jmpm")
 

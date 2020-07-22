@@ -65,7 +65,7 @@ head(data.frame(foo))
 ## load foieGras example data - 2 southern elephant seals
 data("ellies")
 ## prefilter and fit Random Walk SSM using a 24 h time step
-fit <- fit_ssm(ellies, model = "rw", time.step = 24, verbose = 0)
+fit <- fit_ssm(ellies, model = "crw", time.step = 24, verbose = 0)
 
 ## ----multi-fits, message=FALSE------------------------------------------------
 ## list fit outcomes for both seals
@@ -74,7 +74,7 @@ fit
 ## ----fit summary, message = FALSE---------------------------------------------
 fit$ssm[[1]]
 
-## ----fit plot, fig.width=6,fig.height=8---------------------------------------
+## ----fit plot, fig.width=6, fig.height=8--------------------------------------
 # plot time-series of the predicted values
 plot(fit, what = "predicted", type = 1)
 plot(fit, what = "fitted", type = 2)

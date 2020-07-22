@@ -11,6 +11,7 @@
 ##' range(lon)
 ##' range(lon1)
 ##' @export
+##' @keywords internal
 
 wrap_lon <- function(lon, lon_min = -180) {
 

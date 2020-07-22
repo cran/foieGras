@@ -20,6 +20,7 @@ fit_ssm(
   parameters = NULL,
   fit.to.subset = TRUE,
   optim = "optim",
+  optMeth = "L-BFGS-B",
   verbose = 1,
   control = NULL,
   inner.control = NULL,
@@ -65,6 +66,8 @@ this if you know what you are doing}
 
 \item{optim}{numerical optimizer to be used ("nlminb" or "optim")}
 
+\item{optMeth}{optimization method to use (default is "L-BFGS-B"), ignored if optim = "nlminb" (see ?optim for details)}
+
 \item{verbose}{report progress during minimization; 0 for complete silence; 1 for parameter trace; 2 for optimizer trace}
 
 \item{control}{list of control settings for the outer optimizer (see \code{\link{nlminb}} or \code{\link{optim}} for details)}
@@ -102,8 +105,9 @@ Argos Least-Squares and GPS data should have 5 columns in the following order: "
 object or text string in YYYY-MM-DD HH:MM:SS format. If a text string is supplied then the time zone is assumed to be "GMT". lc (location class)
 can include the following values: 3, 2, 1, 0, A, B, Z, G, or GL. The latter two are for GPS and GLS locations, respectively. Class Z values are 
 assumed to have the same error variances as class B. By default, class G (GPS) locations are assumed to have error variances 10x smaller than
-Argos class 3 variances, but unlike Argos error variances the GPS variances are the same for longitude and latitude. See \code{\link{prefilter}} and 
-\code{\link{emf}} for details on how to modify these assumptions. 
+Argos class 3 variances, but unlike Argos error variances the GPS variances are the same for longitude and latitude. 
+
+See \code{\link{emf}} for details on how to modify these assumptions. 
 
 Argos Kalman Filter (or Kalman Smoother) data should have 8 columns, including the 
 above 5 plus "smaj", "smin", "eor" that contain Argos error ellipse variables (in m for "smaj", "smin" and deg for "eor"). 
@@ -130,10 +134,10 @@ plot(fit, what = "predicted", type = 2)
 
 }
 \references{
-Jonsen ID, Patterson TA, Costa DP, Doherty PD, Godley BJ, Grecian WJ, Guinet C, Hoenner X, Kienle SS, Robinson PW, Votier SC. (2020) A continuous-time state-space model for rapid quality-control of Argos locations from animal-borne tags. arXiv preprint arXiv:2005.00401. May 1.
+Jonsen ID, Patterson TA, Costa DP, et al. (2020) A continuous-time state-space model for rapid quality-control of Argos locations from animal-borne tags. Movement Ecology 8:31 https://doi.org/10.1186/s40462-020-00217-7
 
-Jonsen ID, McMahon CR, Patterson TA, Auger-Méthé M, Harcourt R, Hindell MA, Bestley S. (2019) Movement responses to environment: fast inference of variation among southern elephant seals with a mixed effects model. Ecology. 100(1):e02566.
+Jonsen ID, McMahon CR, Patterson TA, et al. (2019) Movement responses to environment: fast inference of variation among southern elephant seals with a mixed effects model. Ecology. 100(1):e02566 https://doi.org/10.1002/ecy.2566
 }
 \seealso{
-\code{\link{prefilter}} \code{\link{sfilter}}
+\code{\link{sfilter}}
 }

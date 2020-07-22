@@ -3,6 +3,7 @@
 ##' @param x a data frame of observations (see details)
 ##' @param model mpm model to fit; either \code{mpm} with unpooled random walk variance parameters (\code{sigma_(g,i)}) or \code{jmpm} with a single, pooled random variance parameter (\code{sigma_g})
 ##' @param optim numerical optimizer
+##' @param optMeth optimization method to use (default is "L-BFGS-B"), ignored if optim = "nlminb" (see ?optim for details)
 ##' @param verbose report progress during minimization
 ##' @param control list of control parameters for the outer optimization (type ?nlminb or ?optim for details)
 ##' @param inner.control list of control parameters for the inner optimization
@@ -15,8 +16,8 @@
 ##' 
 ##' @examples
 ##' ## fit jmpm to two southern elephant seals
-##' data(fssm)
-##' dmp <- grab(fssm, "predicted", as_sf=FALSE)
+##' data(xs)
+##' dmp <- grab(xs, "predicted", as_sf=FALSE)
 ##' dmp <- dmp[, c("id", "date", "lon", "lat")]
 ##' fmpm <- fit_mpm(dmp, model = "jmpm")
 ##' 
@@ -27,20 +28,16 @@
 ##' @export
 fit_mpm <- function(x,
                     model = c("mpm", "jmpm"),
-                    optim = c("optim","nlminb"),
+                    optim = "optim",
+                    optMeth = "L-BFGS-B",
                     verbose = 1,
                     control = NULL,
                     inner.control = NULL) {
   
-  optim <- match.arg(optim)
   model <- match.arg(model)
   
   if(verbose == 1)
-    cat(paste0("\nfitting ", model, "...\n"))
-  if (verbose %in% 0:1)
-    verb <-  FALSE
-  else
-    verb <- TRUE
+    cat(paste0("fitting ", model, "...\n"))
 
   switch(model,
          mpm = {
@@ -48,7 +45,8 @@ fit_mpm <- function(x,
              map(~ try(mpmf(.x, 
                         model = model,
                         optim = optim,
-                        verbose = verb,
+                        optMeth = optMeth,
+                        verbose = verbose,
                         control = control,
                         inner.control = inner.control
              ), silent = TRUE)
@@ -67,14 +65,15 @@ fit_mpm <- function(x,
                x = x,
                model = model,
                optim = optim,
-               verbose = verb,
+               optMeth = optMeth,
+               verbose = verbose,
                control = control,
                inner.control = inner.control
              ), silent = TRUE)
            
            fit <- tibble(mpm = list(fit)) %>%
              mutate(converged = ifelse(length(.$mpm[[1]]) == 8, .$mpm[[1]]$opt$convergence == 0, FALSE)) %>%
-             mutate(model = fit$model)
+             mutate(model = model)
          })
 
   class(fit) <- append("fG_mpm", class(fit))  

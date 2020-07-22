@@ -8,12 +8,8 @@
 ##' @author Ian Jonsen, Toby Patterson
 ##'
 ##' @seealso fit_ssm
-##' @references Jonsen I, McMahon CR, Patterson TA, Auger-Méthé M, Harcourt R, Hindell MA, Bestley S (2019) 
-##' Movement responses to environment: fast inference of variation among southern elephant seals with a mixed effects model. 
-##' Ecology 100:e02566
-##' @references Jonsen I, Patterson TA, Costa DP, Doherty PD, Godley BJ, Grecian WJ, Guinet C, Hoenner X, Kienle SS, 
-##' Robinson PW, Votier SC, Witt MJ, Hindell MA, Harcourt RG, McMahon CR (2020) A continuous-time state-space model for rapid 
-##' quality-control of Argos locations from animal-borne tags. arXiv doi:arxiv:2005.00401
+##' @references Jonsen ID, Patterson TA, Costa DP, et al. (2020) A continuous-time state-space model for rapid quality-control of Argos locations from animal-borne tags. Movement Ecology 8:31 https://doi.org/10.1186/s40462-020-00217-7
+##' @references Jonsen ID, McMahon CR, Patterson TA, et al. (2019) Movement responses to environment: fast inference of variation among southern elephant seals with a mixed effects model. Ecology. 100(1):e02566 https://doi.org/10.1002/ecy.2566
 ##'
 ##' @keywords foieGras
 ##' @importFrom assertthat assert_that
@@ -30,11 +26,12 @@
 ##' @importFrom sf st_coordinates st_geometry<- st_bbox st_cast
 ##' @importFrom trip sda speedfilter trip
 ##' @importFrom TMB MakeADFun sdreport newtonOption oneStepPredict
-##' @importFrom stats approx cov sd predict nlminb optim na.omit median
+##' @importFrom stats approx cov sd predict nlminb optim na.omit median qlogis
 ##' @importFrom utils flush.console
+##' @importFrom wesanderson wes_palette
 ##' @importFrom ggplot2 ggplot geom_point geom_path geom_ribbon geom_qq geom_qq_line geom_histogram aes ggtitle theme_bw
-##' @importFrom ggplot2 theme element_blank geom_sf xlim ylim unit
-##' @importFrom ggplot2 element_text scale_colour_viridis_c
+##' @importFrom ggplot2 theme element_blank geom_sf xlim ylim unit aes_string
+##' @importFrom ggplot2 element_text scale_colour_manual scale_colour_gradientn
 ##' @importFrom grDevices extendrange grey
 NULL
 
@@ -60,27 +57,23 @@ NULL
 ##' Strategy and the Super Science Initiative.
 NULL
 
-##' @name fssm
+##' @name xs
 ##' @docType data
 ##' @title foieGras example fit object
 ##' @format .RData
 ##' @keywords data
-##' @description Example foieGras fit object, using ellies example data and the
-##' following call: fssm <- fit_ssm(ellies, vmax=4, model="crw", time.step=36). This example
+##' @description Example foieGras fit object. This example
 ##' fit is included purely to speed up examples where a fit object is required
 ##' but fitting to data is not the focus of the example.
 NULL
 
-##' @name fmpm
+##' @name xm
 ##' @docType data
 ##' @title foieGras example mpm fit object
 ##' @format .RData
 ##' @keywords data
-##' @description Example foieGras fit object, using ssm_fits example data and the
-##' following call: fmp <- fssm %>% grab(., "p", as_sf = FALSE) %>% 
-##' select(id,date,lon,lat) %>% 
-##' fit_mpm(., model="jmpm") 
-##' This example fit is included purely to speed up examples where a fit object is required
+##' @description Example foieGras mpm fit object. This example fit 
+##' is included purely to speed up examples where a fit object is required
 ##' but fitting to data is not the focus of the example.
 NULL
 

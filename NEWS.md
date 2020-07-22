@@ -1,23 +1,10 @@
-# foieGras 0.2.0
+# foieGras 0.6-9
 
-* first release, updates will follow regularly and be documented here
-
-# foieGras 0.2.1
-
-* patch to improve C++ portability
-
-# foieGras 0.2.2
-
-* patch for compatibility with latest sf version
-
-# foieGras 0.4.0
-
-* adds move persistence models for behavioural inference along animal tracks, via `fit_mpm()`
-* adds ability to fit SSM's to processed light-level geolocation or GPS data by adding `lonerr, laterr` variables to input data
-* adds One-Step-Ahead prediction residuals for evaluating SSM fits, via `osar()` and generic `plot()` method for `osar` output
-* adds diagnostic plot functions that handle multi-individual fits, via generic `plot()` method for `fG_ssm` fit objects
-* adds `sf`-enabled mapping function, via `fmap()`
-* fixes CRAN check errors from last version, where proj4string syntax `+init:epsg=` was not supported in non-PROJ4 emulation mode on some linux platforms
+* adds wesanderson::wes_palette("Zissou1") as default palette for plots/maps
+* generic plot method for fG_ssm objects can now plot individuals all on 1 page (pages = 1) or on separate pages (pages = 0)
+* 2-d (track) plots now include confidence ellipses on estimated locations
+* generic plot method for fg_mpm objects now available
+* mapping function (fmap) can optionally take an fg_mpm object to colour locations by behavioural index (gamma_t)
 
 # foieGras 0.6-7
 
@@ -30,3 +17,33 @@
 * removes reliance on `dplyr::do`, which is superseded as of `dplyr 1.0.0`
 * replaces dplyr progressbar with parameter trace when fitting SSM to single or multiple data sets in default verbose mode 1
 * replaces `argosfilter::sdafilter` in favour of `trip::sda` (which is a faster, vectorized version of the former) to prefilter outlier locations
+
+
+# foieGras 0.4.0
+
+* adds move persistence models for behavioural inference along animal tracks, via `fit_mpm()`
+* adds ability to fit SSM's to processed light-level geolocation or GPS data by adding `lonerr, laterr` variables to input data
+* adds One-Step-Ahead prediction residuals for evaluating SSM fits, via `osar()` and generic `plot()` method for `osar` output
+* adds diagnostic plot functions that handle multi-individual fits, via generic `plot()` method for `fG_ssm` fit objects
+* adds `sf`-enabled mapping function, via `fmap()`
+* fixes CRAN check errors from last version, where proj4string syntax `+init:epsg=` was not supported in non-PROJ4 emulation mode on some linux platforms
+
+
+# foieGras 0.2.2
+
+* patch for compatibility with latest sf version
+
+
+# foieGras 0.2.1
+
+* patch to improve C++ portability
+
+
+# foieGras 0.2.0
+
+* first release, updates will follow regularly and be documented here
+
+
+
+
+

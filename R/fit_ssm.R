@@ -29,6 +29,7 @@
 ##' @param fit.to.subset fit the SSM to the data subset determined by \code{prefilter}
 ##' (default is TRUE)
 ##' @param optim numerical optimizer to be used ("nlminb" or "optim")
+##' @param optMeth optimization method to use (default is "L-BFGS-B"), ignored if optim = "nlminb" (see ?optim for details)
 ##' @param verbose report progress during minimization; 0 for complete silence; 1 for parameter trace; 2 for optimizer trace
 ##' @param control list of control settings for the outer optimizer (see \code{\link{nlminb}} or \code{\link{optim}} for details)
 ##' @param inner.control list of control settings for the inner optimizer (see \code{\link{MakeADFun}} for additional details)
@@ -39,8 +40,9 @@
 ##' object or text string in YYYY-MM-DD HH:MM:SS format. If a text string is supplied then the time zone is assumed to be "GMT". lc (location class)
 ##' can include the following values: 3, 2, 1, 0, A, B, Z, G, or GL. The latter two are for GPS and GLS locations, respectively. Class Z values are 
 ##' assumed to have the same error variances as class B. By default, class G (GPS) locations are assumed to have error variances 10x smaller than
-##' Argos class 3 variances, but unlike Argos error variances the GPS variances are the same for longitude and latitude. See \code{\link{prefilter}} and 
-##' \code{\link{emf}} for details on how to modify these assumptions. 
+##' Argos class 3 variances, but unlike Argos error variances the GPS variances are the same for longitude and latitude. 
+##' 
+##' See \code{\link{emf}} for details on how to modify these assumptions. 
 ##' 
 ##' Argos Kalman Filter (or Kalman Smoother) data should have 8 columns, including the 
 ##' above 5 plus "smaj", "smin", "eor" that contain Argos error ellipse variables (in m for "smaj", "smin" and deg for "eor"). 
@@ -70,11 +72,11 @@
 ##' \item{\code{time}}{the processing time for sfilter}
 ##'
 ##' @references
-##' Jonsen ID, Patterson TA, Costa DP, Doherty PD, Godley BJ, Grecian WJ, Guinet C, Hoenner X, Kienle SS, Robinson PW, Votier SC. (2020) A continuous-time state-space model for rapid quality-control of Argos locations from animal-borne tags. arXiv preprint arXiv:2005.00401. May 1.
+##' Jonsen ID, Patterson TA, Costa DP, et al. (2020) A continuous-time state-space model for rapid quality-control of Argos locations from animal-borne tags. Movement Ecology 8:31 https://doi.org/10.1186/s40462-020-00217-7
 ##' 
-##' Jonsen ID, McMahon CR, Patterson TA, Auger-Méthé M, Harcourt R, Hindell MA, Bestley S. (2019) Movement responses to environment: fast inference of variation among southern elephant seals with a mixed effects model. Ecology. 100(1):e02566.
+##' Jonsen ID, McMahon CR, Patterson TA, et al. (2019) Movement responses to environment: fast inference of variation among southern elephant seals with a mixed effects model. Ecology. 100(1):e02566 https://doi.org/10.1002/ecy.2566
 ##' 
-##' @seealso \code{\link{prefilter}} \code{\link{sfilter}}
+##' @seealso \code{\link{sfilter}}
 ##' 
 ##' @examples
 ##' ## fit crw model to two seals with Argos LS data
@@ -107,6 +109,7 @@ fit_ssm <- function(d,
                     parameters = NULL,
                     fit.to.subset = TRUE,
                     optim = "optim",
+                    optMeth = "L-BFGS-B",
                     verbose = 1,
                     control = NULL,
                     inner.control = NULL,
@@ -138,7 +141,7 @@ fit_ssm <- function(d,
     
   } else {
     if(verbose == 1)
-      cat("fitting SSM...\n")
+      cat(paste0("fitting ", model, "...\n"))
     
     fit <- fit %>%
       map(~ sfilter(
@@ -149,6 +152,7 @@ fit_ssm <- function(d,
         map = map,
         fit.to.subset = fit.to.subset,
         optim = optim,
+        optMeth = optMeth,
         verbose = verbose,
         control = control,
         inner.control = inner.control,
@@ -163,7 +167,9 @@ fit_ssm <- function(d,
         } else if(length(x) < 15) {
           FALSE
         })) %>%
-      mutate(pdHess = sapply(.$ssm, function(x) x$rep$pdHess)) %>%
+      mutate(pdHess = sapply(.$ssm, function(x) 
+        length(x) == 15
+      )) %>%
       mutate(pmodel = sapply(.$ssm, function(x) x$pm))
   }
 
