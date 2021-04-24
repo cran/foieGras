@@ -6,28 +6,38 @@
 \usage{
 fit_mpm(
   x,
-  model = c("mpm", "jmpm"),
-  optim = "optim",
-  optMeth = "L-BFGS-B",
-  verbose = 1,
-  control = NULL,
-  inner.control = NULL
+  what = "predicted",
+  model = c("jmpm", "mpm"),
+  coords = 3:4,
+  control = mpm_control(),
+  inner.control = NULL,
+  optim = NULL,
+  optMeth = NULL,
+  verbose = NULL
 )
 }
 \arguments{
-\item{x}{a data frame of observations (see details)}
+\item{x}{a \code{fG_ssm} fit object or a data frame of observations (see details)}
 
-\item{model}{mpm model to fit; either \code{mpm} with unpooled random walk variance parameters (\code{sigma_(g,i)}) or \code{jmpm} with a single, pooled random variance parameter (\code{sigma_g})}
+\item{what}{if a \code{fG_ssm} fit object is supplied then \code{what} determines
+whether fitted or predicted (default) values are mapped; ignored if
+\code{x} is a data frame}
 
-\item{optim}{numerical optimizer}
+\item{model}{mpm model to fit; either \code{mpm} with unpooled random walk
+variance parameters (\code{sigma_(g,i)}) or \code{jmpm} with a single,
+pooled random variance parameter (\code{sigma_g})}
 
-\item{optMeth}{optimization method to use (default is "L-BFGS-B"), ignored if optim = "nlminb" (see ?optim for details)}
+\item{coords}{column numbers of the location coordinates (default = 3:4)}
 
-\item{verbose}{report progress during minimization}
-
-\item{control}{list of control parameters for the outer optimization (type ?nlminb or ?optim for details)}
+\item{control}{list of control settings for the outer optimizer (see \code{mpm_control} for details)}
 
 \item{inner.control}{list of control parameters for the inner optimization}
+
+\item{optim}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} use ssm_control(optim = "optim") instead, see \code{ssm_control} for details}
+
+\item{optMeth}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} use ssm_control(method = "L-BFGS-B") instead, see \code{ssm_control} for details}
+
+\item{verbose}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} use ssm_control(verbose = 1) instead, see \code{ssm_control} for details}
 }
 \value{
 a list with components
@@ -38,14 +48,12 @@ a list with components
 \item{\code{opt}}{the object returned by the optimizer}
 }
 \description{
-fit a random walk with time-varying move persistence to location data (e.g., output from \code{fit_ssm})
+fit a random walk with time-varying move persistence to
+temporally regular or irregular location data
 }
 \examples{
-## fit jmpm to two southern elephant seals
+## fit jmpm to two southern elephant seal tracks
 data(xs)
-dmp <- grab(xs, "predicted", as_sf=FALSE)
-dmp <- dmp[, c("id", "date", "lon", "lat")]
-fmpm <- fit_mpm(dmp, model = "jmpm")
-
+fmpm <- fit_mpm(xs, model = "jmpm")
 
 }

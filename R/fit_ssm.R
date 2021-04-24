@@ -28,12 +28,12 @@
 ##' this if you know what you are doing
 ##' @param fit.to.subset fit the SSM to the data subset determined by \code{prefilter}
 ##' (default is TRUE)
-##' @param optim numerical optimizer to be used ("nlminb" or "optim")
-##' @param optMeth optimization method to use (default is "L-BFGS-B"), ignored if optim = "nlminb" (see ?optim for details)
-##' @param verbose report progress during minimization; 0 for complete silence; 1 for parameter trace; 2 for optimizer trace
-##' @param control list of control settings for the outer optimizer (see \code{\link{nlminb}} or \code{\link{optim}} for details)
+##' @param control list of control settings for the outer optimizer (see \code{ssm_control} for details)
 ##' @param inner.control list of control settings for the inner optimizer (see \code{\link{MakeADFun}} for additional details)
-##' @param lpsi lower bound for the psi parameter
+##' @param verbose `r lifecycle::badge("deprecated")` use ssm_control(verbose = 1) instead, see \code{ssm_control} for details
+##' @param optim `r lifecycle::badge("deprecated")` use ssm_control(optim = "optim") instead, see \code{ssm_control} for details
+##' @param optMeth `r lifecycle::badge("deprecated")` use ssm_control(method = "L-BFGS-B") instead, see \code{ssm_control} for details
+##' @param lpsi `r lifecycle::badge("deprecated")` use ssm_control(lower = list(lpsi = -Inf)) instead, see \code{ssm_control} for details
 ##'
 ##' @details \code{d} is a \code{data.frame}, \code{tibble}, or \code{sf-tibble} with 5, 7 or 8 columns, depending on the tracking data type. 
 ##' Argos Least-Squares and GPS data should have 5 columns in the following order: "id", "date", "lc", "lon", "lat". Where "date" can be a POSIX
@@ -79,19 +79,21 @@
 ##' @seealso \code{\link{sfilter}}
 ##' 
 ##' @examples
-##' ## fit crw model to two seals with Argos LS data
-##' data(ellies)
-##' fit <- fit_ssm(ellies, vmax = 5, model = "crw", time.step = 48)
+##' ## fit crw model to Argos LS data
+##' ## se = FALSE to speed up ex
+##' fit <- fit_ssm(sese1, vmax = 4, model = "crw", time.step = 48, 
+##' control = ssm_control(se = FALSE)) 
 ##' 
-##' ## time series plots of fitted value fits to both seals
-##' plot(fit, what = "fitted", type = 1)
+##' ## time series plots of fitted value fit to data
+##' plot(fit, what = "fitted", type = 1, ask = FALSE)
 ##'
-##' ## track plots of predicted value fits for both seals
-##' plot(fit, what = "predicted", type = 2)
+##' ## track plots of predicted value fit to data
+##' plot(fit, what = "predicted", type = 2, ask = FALSE)
 ##'
 ##' @importFrom dplyr tibble mutate "%>%"
 ##' @importFrom purrr map
 ##' @importFrom assertthat assert_that
+##' @importFrom lifecycle deprecate_stop deprecate_warn
 ##'
 ##' @export
 fit_ssm <- function(d,
@@ -102,25 +104,52 @@ fit_ssm <- function(d,
                     min.dt = 60,
                     pf = FALSE,
                     model = "crw",
-                    time.step = 6,
+                    time.step = NA,
                     scale = FALSE,
                     emf = NULL,
                     map = NULL,
                     parameters = NULL,
                     fit.to.subset = TRUE,
-                    optim = "optim",
-                    optMeth = "L-BFGS-B",
-                    verbose = 1,
-                    control = NULL,
+                    control = ssm_control(),
                     inner.control = NULL,
-                    lpsi=-Inf
+                    verbose = NULL,
+                    optim = NULL,
+                    optMeth = NULL,
+                    lpsi = NULL
                     )
 {
 
 ## check args - most args handled by prefilter() & sfilter()
-  assert_that(is.data.frame(d), msg = "x must be a data.frame, tibble or sf-tibble, see `?fit_ssm for details`")
-  assert_that(is.logical(pf), msg = "pf must be either FALSE (fit model) or TRUE (only run prefilter)")
+  assert_that(is.data.frame(d), 
+              msg = "x must be a data.frame, tibble or sf-tibble, see `?fit_ssm for details`")
+  assert_that(is.logical(pf), 
+              msg = "pf must be either FALSE (fit model) or TRUE (only run prefilter)")
 
+## warnings for deprecated arguments
+  if(!is.null(verbose)) {
+    deprecate_warn("0.7-5", "fit_ssm(verbose)", 
+                                       details = "use `control = ssm_control(verbose)` instead")
+    control$verbose <- verbose
+  }
+  if(!is.null(optim)) {
+    deprecate_warn("0.7-5", "fit_ssm(optim)", 
+                                     details = "use `control = ssm_control(optim)` instead")
+    if(optim %in% c("nlminb", "optim")) control$optim <- optim
+    else stop("invalid optimiser specified, see ?ssm_control for options")
+  }
+  if(!is.null(optMeth)) {
+    deprecate_warn("0.7-5", "fit_ssm(optMeth)", 
+                                       details = "use `control = ssm_control(method)` instead")
+    if(optMeth %in% c("L-BFGS-B", "BFGS", "Nelder-Mead", "CG", "SANN", "Brent"))
+      control$method <- optMeth
+    else stop("invalid optimisation method specified, see ?ssm_control for options")
+  }
+  if(!is.null(lpsi)) {
+    deprecate_warn("0.7-5", "fit_ssm(lpsi)", 
+                                    details = "use `control = ssm_control(lower)` instead")
+    control$lower <- list(l_psi = lpsi)
+  }
+  
   fit <- d %>%
     split(., .$id) %>%
     map(~ prefilter( 
@@ -140,7 +169,7 @@ fit_ssm <- function(d,
             Supply data as an `sf` object with a common projection across individuals.\n")
     
   } else {
-    if(verbose == 1)
+    if(control$verbose == 1)
       cat(paste0("fitting ", model, "...\n"))
     
     fit <- fit %>%
@@ -151,12 +180,8 @@ fit_ssm <- function(d,
         parameters = parameters,
         map = map,
         fit.to.subset = fit.to.subset,
-        optim = optim,
-        optMeth = optMeth,
-        verbose = verbose,
         control = control,
-        inner.control = inner.control,
-        lpsi = lpsi
+        inner.control = inner.control
       )
       )
 

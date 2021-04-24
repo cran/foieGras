@@ -6,11 +6,8 @@
 \usage{
 mpmf(
   x,
-  model = c("mpm", "jmpm"),
-  optim = c("nlminb", "optim"),
-  optMeth = c("L-BFGS-B", "BFGS", "Nelder-Mead", "CG", "SANN", "Brent"),
-  verbose = TRUE,
-  control = NULL,
+  model = c("jmpm", "mpm"),
+  control = mpm_control(),
   inner.control = NULL
 )
 }
@@ -19,16 +16,16 @@ mpmf(
 
 \item{model}{specify whether MPM is to be fit with unpooled ("mpm") or pooled ("jmpm") RW variance(s).}
 
-\item{optim}{numerical optimizer to be used ("nlminb" or "optim")}
-
-\item{optMeth}{optimization method to use (default is "L-BFGS-B"), ignored if optim = "nlminb"}
-
-\item{verbose}{report progress during minimization}
-
-\item{control}{list of control parameters for the outer optimization (type ?nlminb or ?optim for details)}
+\item{control}{list of control settings for the outer optimizer (see \code{mpm_control} for details)}
 
 \item{inner.control}{list of control settings for the inner optimization
 (see ?TMB::MakeADFUN for additional details)}
+
+\item{verbose}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} use ssm_control(verbose = 1) instead, see \code{ssm_control} for details}
+
+\item{optim}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} use ssm_control(optim = "optim") instead, see \code{ssm_control} for details}
+
+\item{optMeth}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} use ssm_control(method = "L-BFGS-B") instead, see \code{ssm_control} for details}
 }
 \description{
 generates initial values for model parameters and unobserved gamma's;

@@ -3,7 +3,7 @@
 \docType{data}
 \name{ellie}
 \alias{ellie}
-\title{Southern elephant seal Argos satellite data (1 individual)}
+\title{Southern elephant seal Argos satellite data (1 individual, sub-sampled for testing speed)}
 \format{
 .RData
 }

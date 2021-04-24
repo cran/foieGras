@@ -21,21 +21,22 @@
 ##' this if you know what you are doing...
 ##' @param fit.to.subset fit the SSM to the data subset determined by prefilter
 ##' (default is TRUE)
-##' @param optim numerical optimizer to be used ("nlminb" or "optim")
-##' @param optMeth optimization method to use (default is "L-BFGS-B"), ignored if optim = "nlminb"
-##' @param verbose report progress during minimization (0 = silent; 1 = show parameter trace [default]; 2 = show optimizer trace)
-##' @param control list of control parameters for the outer optimization (type ?nlminb or ?optim for details)
+##' @param control list of control parameters for the outer optimization (see \code{ssm_control} for details)
 ##' @param inner.control list of control settings for the inner optimization
 ##' (see ?TMB::MakeADFUN for additional details)
-##' @param lpsi lower bound for the psi parameter
+##' @param verbose `r lifecycle::badge("deprecated")` use ssm_control(verbose = 1) instead, see \code{ssm_control} for details
+##' @param optim `r lifecycle::badge("deprecated")` use ssm_control(optim = "optim") instead, see \code{ssm_control} for details
+##' @param optMeth `r lifecycle::badge("deprecated")` use ssm_control(method = "L-BFGS-B") instead, see \code{ssm_control} for details
+##' @param lpsi `r lifecycle::badge("deprecated")` use ssm_control(lower = list(lpsi = -Inf)) instead, see \code{ssm_control} for details
 ##'
-##' @importFrom TMB MakeADFun sdreport newtonOption
+##' @importFrom TMB MakeADFun sdreport newtonOption FreeADFun
 ##' @importFrom stats approx cov sd predict nlminb optim na.omit
 ##' @importFrom utils flush.console
 ##' @importFrom dplyr mutate select full_join arrange lag bind_cols "%>%"
 ##' @importFrom tibble as_tibble
 ##' @importFrom sf st_crs st_coordinates st_geometry<- st_as_sf st_set_crs
 ##' @importFrom assertthat assert_that
+##' @importFrom stringr str_split
 ##'
 ##'
 ##' @keywords internal
@@ -48,17 +49,11 @@ sfilter <-
            parameters = NULL,
            map = NULL,
            fit.to.subset = TRUE,
-           optim = c("nlminb", "optim"),
-           optMeth = c("L-BFGS-B", "BFGS", "Nelder-Mead", "CG", "SANN", "Brent"),
-           verbose = 1,
-           control = NULL,
-           inner.control = NULL,
-           lpsi=-10) {
+           control = ssm_control(),
+           inner.control = NULL) {
 
     st <- proc.time()
     call <- match.call()
-    optim <- match.arg(optim)
-    optMeth <- match.arg(optMeth)
     model <- match.arg(model)
 
     ## check args
@@ -73,22 +68,8 @@ sfilter <-
                 msg = "map must be a named list of parameters to fix (turn off) in estimation or NULL")
     assert_that(is.logical(fit.to.subset), 
                 msg = "fit.to.subset must be TRUE (fit to prefiltered observations) or FALSE (fit to all observations)")
-    assert_that(optim %in% c("nlminb", "optim"),
-                msg = "optimiser can only be either `nlminb` or `optim`")
-    assert_that(optMeth %in% c("L-BFGS-B", "BFGS", "Nelder-Mead", "CG", "SANN", "Brent"),
-                msg = "optMeth can only be `L-BFGS-B`, `BFGS`, `Nelder-Mead`, `CG`, `SANN`, or `Brent` - see ?optim")
-    assert_that((is.numeric(verbose) & verbose %in% c(0,1,2)),
-                msg = "verbose must be a numeric value of 0 = `be silent`, 1 = `show parameter trace` (default), or 2 = `show optimisere trace`")
-    assert_that(any(is.list(control) || is.null(control)), msg = "control must be a named list of valid optimiser control arguments or NULL")
     assert_that(any(is.list(inner.control) || is.null(inner.control)), msg = "inner.control must be a named list of valid newtonOptimiser control arguments or NULL")
-    assert_that(is.numeric(lpsi), msg = "lpsi must be a numeric value defining the lower estimation bound (on log scale) for psi")
     
-    ## populate control list if any parameters specified...
-    if (length(control)) {
-      nms <- names(control)
-      if (!is.list(control) || is.null(nms))
-        stop("'control' argument must be a named list")
-    }
 
     if(length(time.step) > 1 & !is.data.frame(time.step)) {
         stop("\ntime.step must be a data.frame with id's when specifying multiple prediction times")
@@ -110,8 +91,8 @@ sfilter <-
     d <- cbind(xx, loc) %>%
       mutate(isd = TRUE)
 
-    if (length(time.step) == 1 & !is.na(time.step)) {
-      ## Interpolation times - assume on time.step-multiple of the hour
+    if (!inherits(time.step, "data.frame") & all(!is.na(time.step))) {
+      ## prediction times - assume on time.step-multiple of the hour
       tsp <- time.step * 3600
       tms <- (as.numeric(d$date) - as.numeric(d$date[1])) / tsp
       index <- floor(tms)
@@ -121,18 +102,23 @@ sfilter <-
           by = tsp,
           length.out = max(index) + 2
         ))
-    } else if (length(time.step) > 1 & !is.na(time.step)) {
+      
+    } else if (inherits(time.step, "data.frame") & all(!is.na(time.step))) {
       ts <- subset(time.step, id %in% unique(d$id)) %>% 
         select(date)
-    } 
-    if (!is.na(time.step)) {
-      ## add 1 s to observation time(s) that exactly match prediction time(s) & throw a warning
+      
+    } else if (inherits(time.step, "data.frame") & any(is.na(time.step))) {
+      stop("NA's detected in user-supplied prediction times data.frame")
+    }
+    
+    if (all(!is.na(time.step))) {
+      ## add 1 s to observation time(s) that exactly match prediction time(s)
       if (sum(d$date %in% ts$date) > 0) {
         o.times <- which(d$date %in% ts$date)
         d[o.times, "date"] <- d[o.times, "date"] + 1
       }
 
-    ## merge data and interpolation times
+    ## merge data and prediction times
     ## add is.data flag (distinguish obs from reg states)
     d.all <- full_join(d, ts, by = "date") %>%
       arrange(date) %>%
@@ -187,13 +173,15 @@ sfilter <-
       sigma <- sqrt(diag(V))
       rho <- V[1, 2] / prod(sigma)
 
+      v <- cbind(c(0,diff(x.init)), c(0,diff(y.init))) / dt
+      
       parameters <- list(
         l_sigma = log(pmax(1e-08, sigma)),
         l_rho_p = log((1 + rho) / (1 - rho)),
         X = t(xs),
-        logD = 0,
         mu = t(xs),
-        v = t(xs) * 0,
+        v = t(v),
+        l_D = 0,
         l_psi = 0,
         l_tau = c(0, 0),
         l_rho_o = 0
@@ -207,16 +195,22 @@ sfilter <-
     automap <- switch(model, 
                      rw = {
                        list(
-                         list(l_psi = factor(NA)
+                         list(#l_dif = factor(NA),
+                              l_psi = factor(NA)
                             ),
-                         list(l_tau = factor(c(NA, NA)),
+                         list(
+                            #l_dif = factor(NA),
                             l_psi = factor(NA),
+                            l_tau = factor(c(NA, NA)),
                             l_rho_o = factor(NA)
                             ),
-                         list(l_tau = factor(c(NA, NA)),
-                            l_psi = factor(NA)
+                         list(
+                            #l_dif = factor(NA),
+                            l_psi = factor(NA),
+                            l_tau = factor(c(NA, NA))
                             ),
-                         list(l_psi = factor(NA)
+                         list(#l_dif = factor(NA),
+                              l_psi = factor(NA)
                             )
                          )
                        },
@@ -288,97 +282,111 @@ sfilter <-
     if (is.null(inner.control) | !"smartsearch" %in% names(inner.control)) {
       inner.control <- list(smartsearch = TRUE)
     }
-    verb <- ifelse(verbose == 2, TRUE, FALSE)
     rnd <- switch(model, rw = "X", crw = c("mu", "v"))
+
     obj <-
       MakeADFun(
         data,
         parameters,
         map = map,
         random = rnd,
-        hessian = FALSE,
-        method = optMeth,
+        hessian = TRUE,
+        method = control$method,
         DLL = "foieGras",
-        silent = !verb,
+        silent = !ifelse(control$verbose == 2, TRUE, FALSE),
         inner.control = inner.control
       )
-    #    newtonOption(obj, trace = verbose, smartsearch = TRUE)
-    #    obj$env$inner.control$trace <- verbose
-    #    obj$env$inner.control$smartsearch <- FALSE
-    #    obj$env$inner.control$maxit <- 1
-    obj$env$tracemgc <- verb
 
-    ## add par values to trace if verbose = TRUE
+    obj$env$tracemgc <- ifelse(control$verbose == 2, TRUE, FALSE)
+
+    ## add par values to trace if control$verbose = TRUE
     myfn <- function(x) {
       cat("\r", "pars:  ", round(x, 5), "     ")
       flush.console()
       obj$fn(x)
     }
-
+    
     ## Set parameter bounds - most are -Inf, Inf
     L = c(l_sigma=c(-Inf,-Inf),
-          l_rho_p=-Inf,
-          logD=-Inf,
-          l_psi=lpsi,
+          l_rho_p=-7,
+          l_D=-Inf,
+          l_psi=-Inf,
           l_tau=c(-Inf,-Inf),
-          l_rho_o=-Inf)
+          l_rho_o=-7) ## using 2 / (1 + exp(-x)) - 1 transformation, this gives rho_o = -0.999, 0.999
     U = c(l_sigma=c(Inf,Inf),
-          l_rho_p=Inf,
-          logD=Inf,
+          l_rho_p=7,
+          l_D=Inf,
           l_psi=Inf,
           l_tau=c(Inf,Inf),
-          l_rho_o=Inf)
+          l_rho_o=7)
+    
+    if(any(!is.null(control$lower))) {
+      L[which(names(L) %in% names(control$lower))] <- unlist(control$lower)
+    }
+    if(any(!is.null(control$upper))) {
+      U[which(names(U) %in% names(control$upper))] <- unlist(control$upper)
+    } 
+ 
     names(L)[c(1:2,6:7)] <- c("l_sigma", "l_sigma", "l_tau", "l_tau")
     names(U)[c(1:2,6:7)] <- c("l_sigma", "l_sigma", "l_tau", "l_tau")
 
     # Remove inactive parameters from bounds
     L <- L[!names(L) %in% names(map)]
     U <- U[!names(U) %in% names(map)]
+    if(model == "rw") {
+      L <- L[names(L) != "l_D"] ## not sure why but l_D in automap is causing an error in MakeADFun, so remove here to get correct param bounds
+      U <- U[names(U) != "l_D"]
+    } else if(model == "crw") {
+      L <- L[!names(L) %in% c("l_sigma","l_sigma","l_rho_p")] 
+      U <- U[!names(U) %in% c("l_sigma","l_sigma","l_rho_p")]
+    }
 
     ## Minimize objective function
     oldw <- getOption("warn")
     options(warn = -1)  ## turn warnings off but check if optimizer crashed & return warning at end
     opt <-
-      switch(optim,
+      switch(control$optim,
                               nlminb = try(nlminb(obj$par,
-                                                  ifelse(verbose == 1, myfn, obj$fn),
+                                                  ifelse(control$verbose == 1, myfn, obj$fn),
                                                   obj$gr,
-                                                  control = control,
+                                                  control = control$control,
                                                   lower = L,
                                                   upper = U
-                              ))
-                              , #myfn #obj$fn
+                              )),
                               optim = try(do.call(
                                 optim,
                                 args = list(
                                   par = obj$par,
-                                  fn = ifelse(verbose == 1, myfn, obj$fn),
+                                  fn = ifelse(control$verbose == 1, myfn, obj$fn),
                                   gr = obj$gr,
-                                  method = optMeth,
-                                  control = control,
+                                  method = control$method,
+                                  control = control$control,
                                   lower = L,
                                   upper = U
                                 )
                               ), silent = TRUE))
     cat("\n")
+    
+    FreeADFun(obj)
+    
     ## if error then exit with limited output to aid debugging
     ## check if pdHess is FALSE at end and return warning
-    rep <- try(sdreport(obj))
-    
+    rep <- try(sdreport(obj, skip.delta.method = !control$se)) #
+   
     options(warn = oldw) ## turn warnings back on
     
     if (!inherits(opt, "try-error") & !inherits(rep, "try-error")) {
 
       ## Parameters, states and the fitted values
       fxd <- summary(rep, "report")
-      fxd <- fxd[which(fxd[, "Std. Error"] != 0), ]
+      fxd <- fxd[which(!rownames(fxd) %in% str_split(names(map), "_", simplify=TRUE)[,2]), ]
       if("sigma" %in% row.names(fxd)) {
         row.names(fxd)[which(row.names(fxd) == "sigma")] <- c("sigma_x","sigma_y")
       } 
       if("tau" %in% row.names(fxd)) {
         row.names(fxd)[which(row.names(fxd) == "tau")] <- c("tau_x","tau_y")
       }
-      
+
       switch(model,
              rw = {
                tmp <- summary(rep, "random")
@@ -411,6 +419,8 @@ sfilter <-
                tmp <- summary(rep, "random")
                loc <- tmp[rownames(tmp) == "mu",]
                vel <- tmp[rownames(tmp) == "v",]
+               ss <- fxd[which(row.names(fxd) == "sv"), ] ## speeds
+               
                loc <-
                  cbind(loc[seq(1, dim(loc)[1], by = 2),],
                        loc[seq(2, dim(loc)[1], by = 2),]) %>%
@@ -422,6 +432,8 @@ sfilter <-
                        vel[seq(2, dim(vel)[1], by = 2),]) %>%
                  as.data.frame(., row.names = 1:nrow(.))
                names(vel) <- c("u", "u.se", "v", "v.se")
+               vel <- vel %>%
+                 mutate(s = ss[, 1], s.se = ss[, 2])
                
                rdm <- bind_cols(loc, vel) %>%
                  mutate(
@@ -435,7 +447,7 @@ sfilter <-
                           y = y  * sd(d.all$y, na.rm = TRUE) + mean(d.all$y, na.rm = TRUE))
                }
                rdm <- rdm %>%
-                 select(id, date, x, y, x.se, y.se, u, v, u.se, v.se, isd)
+                 select(id, date, x, y, x.se, y.se, u, v, u.se, v.se, s, s.se, isd)
              })
       
       ## coerce x,y back to sf object
@@ -450,7 +462,7 @@ sfilter <-
              },
              crw = {
                rdm <- rdm %>%
-                 select(id, date, x.se, y.se, u, v, u.se, v.se, isd)
+                 select(id, date, x.se, y.se, u, v, u.se, v.se, s, s.se, isd)
              })
 
       ## Fitted values (estimated locations at observation times)
@@ -458,18 +470,23 @@ sfilter <-
         select(-isd)
 
       ## Predicted values (estimated locations at regular time intervals, defined by `ts`)
-      if(!is.na(time.step)) {
+      if(all(!is.na(time.step))) {
       pv <- subset(rdm, !isd) %>%
         select(-isd)
       } else {
         pv <- NULL
       }
       
-      if (optim == "nlminb") {
+      if (control$optim == "nlminb") {
         aic <- 2 * length(opt[["par"]]) + 2 * opt[["objective"]]
-      } else if (optim == "optim") {
+      } else if (control$optim == "optim") {
         aic <- 2 * length(opt[["par"]]) + 2 * opt[["value"]]
       }
+      ## drop sv's from fxd
+      if(model == "crw") {
+        fxd <- fxd[which(row.names(fxd) != "sv"), ]
+      }
+      
       out <- list(
         call = call,
         predicted = pv,
@@ -484,11 +501,14 @@ sfilter <-
         tmb = obj,
         rep = rep,
         aic = aic,
-        optimiser = optim,
+        optimiser = control$optim,
         time = proc.time() - st
       )
-      if(!rep$pdHess) warning("Hessian was not positive-definite so some standard errors could not be calculated. 
-                              You could try a different time.step, or use the map argument: map = list(psi = factor(NA)) to fix psi = 1", call. = FALSE)
+      if(!rep$pdHess & any(!is.na(x$smaj), !is.na(x$smin), !is.na(x$eor))) warning("Hessian was not positive-definite so some standard errors could not be calculated. Try simplifying the model by adding the following argument:
+             map = list(psi = factor(NA))", call. = FALSE)
+    } else if (rep$pdHess & all(is.na(x$smaj), is.na(x$smin), is.na(x$eor))){
+      warning("Hessian was not positive-definite so some standard errors could not be calculated.", 
+              call. = FALSE)
     } else {
       
       ## if optimiser fails
@@ -501,11 +521,15 @@ sfilter <-
         tmb = obj,
         errmsg = opt
       )
-      if(model == "crw") {
-      warning("The optimiser wandered out of bounds and failed. Try simplifying the model by including the following argument: 
+
+      if(model == "crw" & any(!is.na(x$smaj), !is.na(x$smin), !is.na(x$eor))) {
+        warning("The optimiser failed. Try simplifying the model with the following argument: 
                                  map = list(psi = factor(NA))", call. = FALSE)
+      } else if (all(is.na(x$smaj), is.na(x$smin), is.na(x$eor))){
+        warning("The optimiser failed. Try simplifying the model with the following argument: 
+                                 map = list(rho_o = factor(NA))", call. = FALSE)
       } else {
-        warning("The optimiser wandered out of bounds and failed. You could try using a different time.step", call. = FALSE)
+        warning("The optimiser failed. You could try using a different time.step", call. = FALSE)
       }
     }
     

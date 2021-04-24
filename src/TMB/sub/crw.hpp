@@ -29,7 +29,7 @@ Type crw(objective_function<Type>* obj) {
   DATA_MATRIX(GLerr);             // error SD's in lon, lat for GL obs model
   
   // PROCESS PARAMETERS
-  PARAMETER(logD);				  // 1-d Diffusion coefficient
+  PARAMETER(l_D);				  // 1-d Diffusion coefficient
   // random variables
   PARAMETER_ARRAY(mu);     /* State location */
   PARAMETER_ARRAY(v);      /* state velocities */
@@ -45,11 +45,13 @@ Type crw(objective_function<Type>* obj) {
   vector<Type> tau = exp(l_tau);
   Type rho_o = Type(2.0) / (Type(1.0) + exp(-l_rho_o)) - Type(1.0);
   Type psi = exp(l_psi);
-  Type D = exp(logD);
+  Type D = exp(l_D);
   
   /* Define likelihood */
   Type jnll = 0.0;
   Type tiny = 1e-5;
+  
+  vector<Type> sv = dt.size();
   
   // Setup object for evaluating multivariate normal likelihood
   matrix<Type> cov(4,4);
@@ -82,6 +84,9 @@ Type crw(objective_function<Type>* obj) {
     // velocity innovations
     x_t(2) = (v(0,i) - v(0,i-1)); // /dt(i);
     x_t(3) = (v(1,i) - v(1,i-1)); // /dt(i);
+    
+    // 2-D velocity
+    sv(i) = sqrt(pow(v(0,i) - v(0,i-1), 2) + pow(v(1,i) - v(1,i-1), 2)); 
     jnll += MVNORM<Type>(cov)(x_t); // Process likelihood
   }
   
@@ -129,7 +134,10 @@ Type crw(objective_function<Type>* obj) {
       
       nll_obs.setSigma(cov_obs);   // set up i-th obs cov matrix
       jnll += nll_obs((Y.col(i) - mu.col(i)), keep.col(i));   // CRW innovations
-        
+      
+      SIMULATE {
+        Y.col(i) = nll_obs.simulate() + mu.col(i);
+      }  
     } else if(isd(i) == 0) {
       continue;
     } else {  
@@ -137,11 +145,15 @@ Type crw(objective_function<Type>* obj) {
     }
   }
   
-
+  SIMULATE {
+    REPORT(Y);
+  }
+    
   ADREPORT(D);
   ADREPORT(rho_o);
   ADREPORT(tau);
   ADREPORT(psi);
+  ADREPORT(sv);
   
   return jnll;
 }

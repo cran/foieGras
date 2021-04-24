@@ -13,7 +13,7 @@
 ##'
 ##' @keywords foieGras
 ##' @importFrom assertthat assert_that
-##' @importFrom utils data flush.console
+##' @importFrom utils data flush.console globalVariables
 ##' @importFrom dplyr %>% select mutate slice group_by
 ##' @importFrom dplyr distinct arrange filter left_join lag full_join bind_cols
 ##' @importFrom dplyr summarise
@@ -26,18 +26,17 @@
 ##' @importFrom sf st_coordinates st_geometry<- st_bbox st_cast
 ##' @importFrom trip sda speedfilter trip
 ##' @importFrom TMB MakeADFun sdreport newtonOption oneStepPredict
-##' @importFrom stats approx cov sd predict nlminb optim na.omit median qlogis
-##' @importFrom utils flush.console
-##' @importFrom wesanderson wes_palette
+##' @importFrom stats approx cov sd predict nlminb optim na.omit median qlogis qnorm pnorm runif
+##' @importFrom utils flush.console globalVariables
 ##' @importFrom ggplot2 ggplot geom_point geom_path geom_ribbon geom_qq geom_qq_line geom_histogram aes ggtitle theme_bw
 ##' @importFrom ggplot2 theme element_blank geom_sf xlim ylim unit aes_string
 ##' @importFrom ggplot2 element_text scale_colour_manual scale_colour_gradientn
-##' @importFrom grDevices extendrange grey
+##' @importFrom grDevices extendrange grey hcl.colors
 NULL
 
 ##' @name ellie
 ##' @docType data
-##' @title Southern elephant seal Argos satellite data (1 individual)
+##' @title Southern elephant seal Argos satellite data (1 individual, sub-sampled for testing speed)
 ##' @format .RData
 ##' @keywords data
 ##' @description Example elephant seal Argos tracking data. Data were sourced from
@@ -46,9 +45,20 @@ NULL
 ##' Strategy and the Super Science Initiative.
 NULL
 
-##' @name ellies
+##' @name sese
 ##' @docType data
-##' @title Southern elephant seal Argos satellite data (2 individuals)
+##' @title Southern elephant seal Argos satellite data (5 individuals)
+##' @format .RData
+##' @keywords data
+##' @description Example elephant seal Argos tracking data. Data were sourced from
+##' the Integrated Marine Observing System (IMOS) - IMOS is supported by the
+##' Australian Government through the National Collaborative Research Infrastructure
+##' Strategy and the Super Science Initiative.
+NULL
+
+##' @name sese1
+##' @docType data
+##' @title Southern elephant seal Argos satellite data (1 individual)
 ##' @format .RData
 ##' @keywords data
 ##' @description Example elephant seal Argos tracking data. Data were sourced from
@@ -77,13 +87,20 @@ NULL
 ##' but fitting to data is not the focus of the example.
 NULL
 
-## quiets concerns of R CMD check re: the .'s that appear in pipelines
-if(getRversion() >= "2.15.1")  utils::globalVariables(c("."))
+##' @name res
+##' @docType data
+##' @title foieGras example osar residuals object
+##' @format .RData
+##' @keywords data
+##' @description Example foieGras osar residuals object. This example osar 
+##' residuals object is included purely to speed up vignette build.
+NULL
 
 ## stop R CMD check generating NOTES about global variables
-id <- tid <- ssm <- converged <- keep <- id <- y <- x <- x.se <- y.se <- "shut.up"
-geometry <- u <- v <- u.se <- v.se <- lc <- smaj <- smin <- eor <- "shut.up"
-obs.type <- emf.x <- emf.y <- lon <- lat <- rename <- X <- Y <- "shut.up"
-y.z <- x.z <- z <- out <- r <- sub <- isd <- digits <- "shut.up"
-lonerr <- laterr <- coord <- value <- resid <- "shut.up"
-se <- g <- g.se <- id1 <- mpm <- residual <- "shut.up"
+globalVariables(c(".", "id", "tid", "ssm", "converged", "keep", "y", "x", "x.se", "y.se",
+                  "geometry", "u", "v", "u.se", "v.se", "lc", "smaj", "smin", "eor",
+                  "obs.type", "emf.x", "emf.y", "lon", "lat", "rename", "X", "Y", 
+                  "y.z", "x.z",  "z", "out", "r", "sub", "isd", "digits", 
+                  "lonerr", "laterr", "coord", "value", "resid", 
+                  "se", "g", "g.se", "id1", "mpm", "residual",
+                  "s", "s.se", "ci", "b", "x.err", "y.err", "xy", "ellps.tab"))

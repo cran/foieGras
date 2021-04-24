@@ -5,15 +5,15 @@ knitr::opts_chunk$set(
 )
 
 ## ----setup--------------------------------------------------------------------
-library(foieGras)
+require(foieGras)
 
 ## ----data 1, echo = FALSE-----------------------------------------------------
 data(ellie, package = "foieGras")
 head(data.frame(ellie))
 
 ## ----data 2, echo = FALSE-----------------------------------------------------
-data(ellies, package = "foieGras")
-head(data.frame(ellies))
+data(sese, package = "foieGras")
+head(data.frame(sese))
 
 ## ----data 3, echo = FALSE-----------------------------------------------------
 data(ellie, package = "foieGras")
@@ -62,10 +62,14 @@ head(data.frame(foo))
   )
 
 ## ----fit_ssm, message=FALSE---------------------------------------------------
-## load foieGras example data - 2 southern elephant seals
-data("ellies")
 ## prefilter and fit Random Walk SSM using a 24 h time step
-fit <- fit_ssm(ellies, model = "crw", time.step = 24, verbose = 0)
+fit <-
+  fit_ssm(
+    sese1,
+    model = "rw",
+    time.step = 24,
+    control = ssm_control(verbose = 0)
+  )
 
 ## ----multi-fits, message=FALSE------------------------------------------------
 ## list fit outcomes for both seals
@@ -74,8 +78,30 @@ fit
 ## ----fit summary, message = FALSE---------------------------------------------
 fit$ssm[[1]]
 
-## ----fit plot, fig.width=6, fig.height=8--------------------------------------
+## ----fit plot, fig.width=6, fig.height=4--------------------------------------
 # plot time-series of the predicted values
-plot(fit, what = "predicted", type = 1)
-plot(fit, what = "fitted", type = 2)
+plot(fit, what = "predicted", type = 1, pages = 1)
+plot(fit, what = "fitted", type = 2, pages = 1)
+
+## ----osar plots, eval=FALSE---------------------------------------------------
+#  require(patchwork)
+#  # calculate & plot residuals
+#  res <- osar(fit)
+#  
+#  (plot(res, type = "ts") | plot(res, type = "qq")) /
+#    (plot(res, type = "acf") | plot_spacer())
+
+## ---- echo=FALSE, message=FALSE, fig.width=8, fig.height=4--------------------
+require(patchwork)
+## load osar res data to speed vignette build
+data(res)
+(plot(res, type = "ts") | plot(res, type = "qq")) / 
+  (plot(res, type = "acf") | plot_spacer())
+
+## ----behaviour, message=FALSE, fig.width=8, fig.height=4----------------------
+fmp <- fit_mpm(fit, what = "predicted", model = "mpm", control = mpm_control(verbose = 0))
+
+plot(fmp, pages = 1, pal = "Zissou1", rev = TRUE)
+
+plot(fmp, fit, pages = 1, pal = "Cividis")
 

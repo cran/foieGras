@@ -10,35 +10,50 @@ fmap(
   what = c("fitted", "predicted"),
   conf = TRUE,
   obs = FALSE,
-  by.date = FALSE,
+  obs.shp = 17,
+  by.date = TRUE,
   crs = NULL,
   ext.rng = c(0.05, 0.05),
   size = 0.25,
-  col = "black"
+  col = "black",
+  lines = FALSE,
+  landfill = grey(0.6),
+  pal = "Zissou1",
+  rev = FALSE
 )
 }
 \arguments{
-\item{x}{a \code{foieGras} ssm fit object with class `fG_ssm`}
+\item{x}{a \code{foieGras} ssm fit object with class \code{fG_ssm}}
 
-\item{y}{optionally, a \code{foieGras} mpm fit object with class `fG_mpm`; default is NULL}
+\item{y}{optionally, a \code{foieGras} mpm fit object with class \code{fG_mpm}; default is NULL}
 
 \item{what}{specify which location estimates to map: fitted or predicted}
 
-\item{conf}{include confidence regions around estimated location (logigal; default = TRUE, unless y is an mpm fit object then conf is FALSE)}
+\item{conf}{include confidence regions around estimated location (logical; default = TRUE, unless y is an mpm fit object then conf is FALSE)}
 
 \item{obs}{include Argos observations on map (logical; default = FALSE)}
 
-\item{by.date}{when mapping single tracks, should locations be coloured by date (logical; default = FALSE)}
+\item{obs.shp}{point shape for observations (default = 17)}
 
-\item{crs}{`proj4string` for re-projecting locations, if NULL the
+\item{by.date}{when mapping single tracks, should locations be coloured by date (logical; default = TRUE if nrow(x) == 1 else FALSE)}
+
+\item{crs}{\code{proj4string} for re-projecting locations, if NULL the
 default projection ("+proj=merc") for the fitting the SSM will be used}
 
 \item{ext.rng}{factors to extend the plot range in x and y dimensions
 (can exceed 1)}
 
-\item{size}{size of estimated location points; optionally a vector of length 2, with size of observed locations given by 2nd value (ignored if obs = FALSE)}
+\item{size}{size of estimated location points (size = NA will draw no points). Optionally, a vector of length 2 with size of observed locations given by 2nd value (ignored if obs = FALSE)}
 
 \item{col}{colour of observed locations (ignored if obs = FALSE)}
+
+\item{lines}{logical indicating if lines are added to connect estimated locations (default = FALSE)}
+
+\item{landfill}{colour to use for land (default = grey(0.6))}
+
+\item{pal}{\code{hcl.colors} palette to use (default: "Zissou1"; type \code{hcl.pals()} for options)}
+
+\item{rev}{reverse colour palette (logical)}
 }
 \description{
 map foieGras fitted or predicted locations, with or without
